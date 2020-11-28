@@ -3,11 +3,12 @@ mod image;
 mod launcher;
 mod storage;
 
+use error::Error;
 use image::{Imager, QEmuImager};
-use storage::{DirectoryStorageHandler, StorageHandler, StorageHandlers};
+use launcher::{EmulatorLauncher, QemuLauncher};
+use storage::{DirectoryStorageHandler, StorageHandler};
 
-fn main() {
-    let mut handlers = StorageHandlers::new();
+fn main() -> Result<(), Error> {
     let dsh = Box::new(DirectoryStorageHandler {
         basedir: String::from("/tmp/foo"),
     });
@@ -21,6 +22,31 @@ fn main() {
     println!("{:?}", dsh.vm_exists("quux"));
     println!("{:?}", dsh.vm_path("quux", "qemu.qcow2"));
     println!("{:?}", dsh.vm_path_exists("quux", "qemu.qcow2"));
-    handlers.register("directory", dsh);
-    println!("{:?}", handlers);
+
+    let launcher = QemuLauncher::default();
+    println!("{:?}", launcher.emulator_path());
+    println!(
+        "{:?}",
+        launcher.emulator_args("quux", Some("foo.iso"), dsh.clone())
+    );
+    println!(
+        "{:?}",
+        launcher.emulator_args(
+            "quux",
+            Some("/home/erikh/vm-images/isos/ubuntu-20.04.1-live-server-amd64.iso"),
+            dsh.clone()
+        )
+    );
+    println!("{:?}", launcher.emulator_args("quux", None, dsh.clone()));
+
+    let mut child = launcher.launch_vm(
+        "quux",
+        Some("/home/erikh/vm-images/isos/ubuntu-20.04.1-live-server-amd64.iso"),
+        dsh.clone(),
+    )?;
+
+    println!("{:?}", child);
+    let exit = child.wait()?;
+    println!("{:?}", exit);
+    Ok(())
 }
