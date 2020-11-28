@@ -16,6 +16,7 @@ pub trait EmulatorLauncher {
     ) -> Result<Child, Error>;
 
     fn emulator_path(&self) -> String;
+    fn emulator_cpu(&self) -> String;
 
     fn emulator_args(
         &self,
@@ -28,8 +29,6 @@ pub trait EmulatorLauncher {
 pub struct Configuration {
     pub memory: u32, // megabytes
     pub cpus: u32,
-    pub cores: u32,
-    pub threads: u32,
 }
 
 pub struct QemuLauncher {
@@ -46,10 +45,8 @@ impl Default for QemuLauncher {
 impl Default for Configuration {
     fn default() -> Self {
         Configuration {
-            memory: 4096,
-            cpus: 1,
-            cores: 4,
-            threads: 4,
+            memory: 16384,
+            cpus: 8,
         }
     }
 }
@@ -100,6 +97,12 @@ impl EmulatorLauncher for QemuLauncher {
         }
     }
 
+    fn emulator_cpu(&self) -> String {
+        match self.arch {
+            Architecture::X86_64 => return String::from("kvm64"),
+        }
+    }
+
     fn emulator_args(
         &self,
         vm_name: &str,
@@ -109,17 +112,36 @@ impl EmulatorLauncher for QemuLauncher {
         if self.valid().is_ok() {
             if sh.vm_path_exists(vm_name, QEMU_IMG_NAME) {
                 let img_path = sh.vm_path(vm_name, QEMU_IMG_NAME)?;
+                let mon = sh.monitor_path(vm_name).unwrap();
 
                 let mut v = vec![
+                    String::from("-nodefaults"),
+                    String::from("-chardev"),
+                    format!("pipe,id=char0,path={}", mon),
+                    String::from("-mon"),
+                    String::from("chardev=char0,mode=control,pretty=on"),
+                    String::from("-machine"),
+                    String::from("accel=kvm"),
+                    String::from("-display"),
+                    String::from("gtk"),
+                    String::from("-vga"),
+                    String::from("virtio"),
                     String::from("-m"),
-                    format!("{}", self.config.memory),
+                    format!("{}M", self.config.memory),
+                    String::from("-cpu"),
+                    self.emulator_cpu(),
                     String::from("-smp"),
                     format!(
-                        "cpus={},cores={},threads={}",
-                        self.config.cpus, self.config.cores, self.config.threads
+                        "cpus=1,cores={},maxcpus={}",
+                        self.config.cpus, self.config.cpus,
                     ),
                     String::from("-drive"),
-                    format!("file={},if=virtio,media=disk", img_path),
+                    format!(
+                        "driver=raw,if=virtio,file={},cache=none,media=disk",
+                        img_path
+                    ),
+                    String::from("-nic"),
+                    String::from("user"),
                 ];
 
                 if let Some(cd) = cdrom {

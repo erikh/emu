@@ -3,8 +3,8 @@ use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use std::process::{Command, Stdio};
 
 pub const QEMU_IMG_PATH: &str = "qemu-img";
-pub const QEMU_IMG_NAME: &str = "qemu.qcow2";
-pub const QEMU_IMG_DEFAULT_FORMAT: &str = "qcow2";
+pub const QEMU_IMG_NAME: &str = "qemu.raw";
+pub const QEMU_IMG_DEFAULT_FORMAT: &str = "raw";
 
 pub trait Imager {
     fn create(&self, sh: DirectoryStorageHandler, name: &str, gbs: u32) -> Result<(), Error>;

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub trait StorageHandler: fmt::Debug {
     fn base_path(&self) -> String;
     fn vm_root(&self, name: &str) -> Option<String>;
+    fn monitor_path(&self, vm_name: &str) -> Option<String>;
     fn vm_exists(&self, name: &str) -> bool;
     fn vm_list(&self) -> Result<Vec<String>, Error>;
     fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error>;
@@ -26,6 +27,12 @@ impl StorageHandler for DirectoryStorageHandler {
             None => None,
             Some(s) => Some(String::from(s)),
         }
+    }
+
+    fn monitor_path(&self, vm_name: &str) -> Option<String> {
+        Some(String::from(
+            PathBuf::from(self.vm_root(vm_name)?).join("mon").to_str()?,
+        ))
     }
 
     fn vm_exists(&self, name: &str) -> bool {

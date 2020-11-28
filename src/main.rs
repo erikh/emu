@@ -16,6 +16,7 @@ fn main() -> Result<(), Error> {
 
     let imager = QEmuImager::default();
     println!("{:?}", imager.create(dsh, "quux", 10));
+    println!("{:?}", imager.create(dsh, "bar", 50));
 
     println!("{:?}", dsh.base_path());
     println!("{:?}", dsh.vm_list());
@@ -52,5 +53,10 @@ fn main() -> Result<(), Error> {
     t.write(
         "quux",
         Some("/home/erikh/vm-images/isos/ubuntu-20.04.1-live-server-amd64.iso"),
+    )?;
+
+    t.write(
+        "bar",
+        Some("/home/erikh/vm-images/isos/ubuntu-20.04.1-desktop-amd64.iso"),
     )
 }
