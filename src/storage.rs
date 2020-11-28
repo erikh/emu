@@ -1,42 +1,11 @@
 use crate::error::Error;
-use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
-
-type StorageHandlerMap = HashMap<String, Box<dyn StorageHandler>>;
-
-pub struct StorageHandlers {
-    map: StorageHandlerMap,
-}
-
-impl fmt::Debug for StorageHandlers {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for k in self.map.keys() {
-            if let Err(e) = write!(f, "{} -> {:?}\n", k, self.map.get(k)) {
-                return Err(e);
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl StorageHandlers {
-    pub fn new() -> Self {
-        let map = StorageHandlerMap::new();
-        return StorageHandlers { map };
-    }
-
-    pub fn register(&mut self, name: &str, sh: Box<dyn StorageHandler>) {
-        self.map.insert(String::from(name), sh);
-    }
-}
 
 pub trait StorageHandler: fmt::Debug {
     fn base_path(&self) -> String;
     fn vm_root(&self, name: &str) -> Option<String>;
     fn vm_exists(&self, name: &str) -> bool;
-    fn vm_move_file(&self, name: &str, path: &str) -> Result<(), Error>;
     fn vm_list(&self) -> Result<Vec<String>, Error>;
     fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error>;
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
@@ -66,20 +35,6 @@ impl StorageHandler for DirectoryStorageHandler {
                 Err(_) => false,
             },
             None => false,
-        }
-    }
-
-    fn vm_move_file(&self, name: &str, path: &str) -> Result<(), Error> {
-        match self.vm_root(name) {
-            Some(target) => match PathBuf::from(path).file_name() {
-                Some(filename) => match std::fs::rename(path, PathBuf::from(target).join(filename))
-                {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(Error::from(e)),
-                },
-                None => Err(Error::new("path did not appear to contain a filename")),
-            },
-            None => Err(Error::new("could not gather vm storage path")),
         }
     }
 
