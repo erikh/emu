@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::storage::StorageHandler;
+use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use std::process::{Command, Stdio};
 
 pub const QEMU_IMG_PATH: &str = "qemu-img";
@@ -7,7 +7,7 @@ pub const QEMU_IMG_NAME: &str = "qemu.qcow2";
 pub const QEMU_IMG_DEFAULT_FORMAT: &str = "qcow2";
 
 pub trait Imager {
-    fn create(&self, sh: Box<dyn StorageHandler>, name: &str, gbs: u32) -> Result<(), Error>;
+    fn create(&self, sh: DirectoryStorageHandler, name: &str, gbs: u32) -> Result<(), Error>;
     //fn clone(sh: StorageHandler, orig: String, new: String) -> Result<(), Error>;
 }
 
@@ -28,7 +28,7 @@ impl Default for QEmuImager {
 }
 
 impl Imager for QEmuImager {
-    fn create(&self, sh: Box<dyn StorageHandler>, name: &str, gbs: u32) -> Result<(), Error> {
+    fn create(&self, sh: DirectoryStorageHandler, name: &str, gbs: u32) -> Result<(), Error> {
         let exists = sh.vm_path_exists(name, QEMU_IMG_NAME);
         if exists {
             return Err(Error::new(

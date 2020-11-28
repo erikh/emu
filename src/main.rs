@@ -2,6 +2,7 @@ mod error;
 mod image;
 mod launcher;
 mod storage;
+mod template;
 
 use error::Error;
 use image::{Imager, QEmuImager};
@@ -9,12 +10,12 @@ use launcher::{EmulatorLauncher, QemuLauncher};
 use storage::{DirectoryStorageHandler, StorageHandler};
 
 fn main() -> Result<(), Error> {
-    let dsh = Box::new(DirectoryStorageHandler {
-        basedir: String::from("/tmp/foo"),
-    });
+    let dsh = DirectoryStorageHandler {
+        basedir: "/tmp/foo",
+    };
 
     let imager = QEmuImager::default();
-    println!("{:?}", imager.create(dsh.clone(), "quux", 10));
+    println!("{:?}", imager.create(dsh, "quux", 10));
 
     println!("{:?}", dsh.base_path());
     println!("{:?}", dsh.vm_list());
@@ -25,28 +26,31 @@ fn main() -> Result<(), Error> {
 
     let launcher = QemuLauncher::default();
     println!("{:?}", launcher.emulator_path());
-    println!(
-        "{:?}",
-        launcher.emulator_args("quux", Some("foo.iso"), dsh.clone())
-    );
+    println!("{:?}", launcher.emulator_args("quux", Some("foo.iso"), dsh));
     println!(
         "{:?}",
         launcher.emulator_args(
             "quux",
             Some("/home/erikh/vm-images/isos/ubuntu-20.04.1-live-server-amd64.iso"),
-            dsh.clone()
+            dsh,
         )
     );
-    println!("{:?}", launcher.emulator_args("quux", None, dsh.clone()));
+    println!("{:?}", launcher.emulator_args("quux", None, dsh));
 
-    let mut child = launcher.launch_vm(
+    // let mut child = launcher.launch_vm(
+    //     "quux",
+    //     Some("/home/erikh/vm-images/isos/ubuntu-20.04.1-live-server-amd64.iso"),
+    //     dsh,
+    // )?;
+    //
+    // println!("{:?}", child);
+    // let exit = child.wait()?;
+    // println!("{:?}", exit);
+
+    let t = template::Systemd::new(Box::new(launcher), dsh);
+
+    t.write(
         "quux",
         Some("/home/erikh/vm-images/isos/ubuntu-20.04.1-live-server-amd64.iso"),
-        dsh.clone(),
-    )?;
-
-    println!("{:?}", child);
-    let exit = child.wait()?;
-    println!("{:?}", exit);
-    Ok(())
+    )
 }

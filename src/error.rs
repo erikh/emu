@@ -20,6 +20,13 @@ impl From<std::io::Error> for Error {
     }
 }
 
+impl From<tinytemplate::error::Error> for Error {
+    fn from(error: tinytemplate::error::Error) -> Self {
+        let errstr = error.to_string();
+        Error { message: errstr }
+    }
+}
+
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(self)

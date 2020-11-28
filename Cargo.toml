@@ -7,3 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tinytemplate = "1.1"
+serde = { version = "1.0.117", features = ["derive"] }
+dirs = "3.0.1"

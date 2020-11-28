@@ -11,9 +11,9 @@ pub trait StorageHandler: fmt::Debug {
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct DirectoryStorageHandler {
-    pub basedir: String,
+    pub basedir: &'static str,
 }
 
 impl StorageHandler for DirectoryStorageHandler {

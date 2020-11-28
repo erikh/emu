@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::image::QEMU_IMG_NAME;
-use crate::storage::StorageHandler;
+use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use std::process::{Child, Command, Stdio};
 
 pub enum Architecture {
@@ -12,7 +12,7 @@ pub trait EmulatorLauncher {
         &self,
         name: &str,
         cdrom: Option<&str>,
-        sh: Box<dyn StorageHandler>,
+        sh: DirectoryStorageHandler,
     ) -> Result<Child, Error>;
 
     fn emulator_path(&self) -> String;
@@ -21,7 +21,7 @@ pub trait EmulatorLauncher {
         &self,
         vm_name: &str,
         cdrom: Option<&str>,
-        sh: Box<dyn StorageHandler>,
+        sh: DirectoryStorageHandler,
     ) -> Result<Vec<String>, Error>;
 }
 
@@ -76,7 +76,7 @@ impl EmulatorLauncher for QemuLauncher {
         &self,
         name: &str,
         cdrom: Option<&str>,
-        sh: Box<dyn StorageHandler>,
+        sh: DirectoryStorageHandler,
     ) -> Result<Child, Error> {
         match self.emulator_args(name, cdrom, sh) {
             Ok(args) => {
@@ -96,7 +96,7 @@ impl EmulatorLauncher for QemuLauncher {
 
     fn emulator_path(&self) -> String {
         match self.arch {
-            Architecture::X86_64 => return String::from("qemu-system-x86_64"),
+            Architecture::X86_64 => return String::from("/bin/qemu-system-x86_64"),
         }
     }
 
@@ -104,7 +104,7 @@ impl EmulatorLauncher for QemuLauncher {
         &self,
         vm_name: &str,
         cdrom: Option<&str>,
-        sh: Box<dyn StorageHandler>,
+        sh: DirectoryStorageHandler,
     ) -> Result<Vec<String>, Error> {
         if self.valid().is_ok() {
             if sh.vm_path_exists(vm_name, QEMU_IMG_NAME) {
