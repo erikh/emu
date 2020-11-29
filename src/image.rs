@@ -7,57 +7,61 @@ pub const QEMU_IMG_NAME: &str = "qemu.qcow2";
 pub const QEMU_IMG_DEFAULT_FORMAT: &str = "qcow2";
 
 pub trait Imager {
-    fn create(&self, sh: DirectoryStorageHandler, name: &str, gbs: u32) -> Result<(), Error>;
-    fn clone(&self, sh: DirectoryStorageHandler, orig: &str, new: &str) -> Result<(), Error>;
+    fn create(&self, name: &str, gbs: u32) -> Result<(), Error>;
+    fn clone(&self, orig: &str, new: &str) -> Result<(), Error>;
 }
 
 pub struct QEmuImager {
     pub image_format: &'static str,
+    storage: DirectoryStorageHandler,
 }
 
 impl QEmuImager {
-    pub fn new(image_format: &'static str) -> Self {
-        QEmuImager { image_format }
+    pub fn new(image_format: &'static str, storage: DirectoryStorageHandler) -> Self {
+        QEmuImager {
+            image_format,
+            storage,
+        }
     }
 }
 
 impl Default for QEmuImager {
     fn default() -> Self {
-        Self::new(QEMU_IMG_DEFAULT_FORMAT)
+        Self::new(QEMU_IMG_DEFAULT_FORMAT, DirectoryStorageHandler::default())
     }
 }
 
 impl Imager for QEmuImager {
-    fn clone(&self, sh: DirectoryStorageHandler, orig: &str, new: &str) -> Result<(), Error> {
-        if !sh.valid_filename(orig) || !sh.valid_filename(new) {
+    fn clone(&self, orig: &str, new: &str) -> Result<(), Error> {
+        if !self.storage.valid_filename(orig) || !self.storage.valid_filename(new) {
             return Err(Error::new("vm names are invalid"));
         }
 
-        if !sh.vm_path_exists(orig, QEMU_IMG_NAME) {
+        if !self.storage.vm_path_exists(orig, QEMU_IMG_NAME) {
             return Err(Error::new("original does not exist"));
         }
 
-        if sh.vm_path_exists(new, QEMU_IMG_NAME) {
+        if self.storage.vm_path_exists(new, QEMU_IMG_NAME) {
             return Err(Error::new("target already exists"));
         }
 
         match std::fs::copy(
-            sh.vm_path(orig, QEMU_IMG_NAME).unwrap(),
-            sh.vm_path(new, QEMU_IMG_NAME).unwrap(),
+            self.storage.vm_path(orig, QEMU_IMG_NAME).unwrap(),
+            self.storage.vm_path(new, QEMU_IMG_NAME).unwrap(),
         ) {
             Ok(_) => Ok(()),
             Err(e) => Err(Error::from(e)),
         }
     }
 
-    fn create(&self, sh: DirectoryStorageHandler, name: &str, gbs: u32) -> Result<(), Error> {
-        if sh.vm_path_exists(name, QEMU_IMG_NAME) {
+    fn create(&self, name: &str, gbs: u32) -> Result<(), Error> {
+        if self.storage.vm_path_exists(name, QEMU_IMG_NAME) {
             return Err(Error::new(
                 "filename already exists; did you already create this vm?",
             ));
         }
 
-        if let Ok(filename) = sh.vm_path(name, QEMU_IMG_NAME) {
+        if let Ok(filename) = self.storage.vm_path(name, QEMU_IMG_NAME) {
             let status = Command::new(QEMU_IMG_PATH)
                 .args(vec![
                     "create",

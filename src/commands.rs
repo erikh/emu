@@ -56,7 +56,7 @@ fn create(vm_name: &str, size: u32) -> Result<(), Error> {
     }
 
     let imager = QEmuImager::default();
-    imager.create(dsh, vm_name, size)
+    imager.create(vm_name, size)
 }
 
 fn delete(vm_name: &str) -> Result<(), Error> {
@@ -74,6 +74,10 @@ fn delete(vm_name: &str) -> Result<(), Error> {
         Ok(path) => std::fs::remove_dir_all(path)?,
         Err(e) => return Err(e),
     };
+
+    if let Err(_) = unsupervise(vm_name) {
+        println!("Could not remove systemd unit; assuming it was never installed")
+    }
 
     Ok(())
 }
@@ -173,7 +177,7 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
     }
 
     let imager = QEmuImager::default();
-    imager.clone(dsh, from, to)
+    imager.clone(from, to)
 }
 
 pub struct Commands {}
