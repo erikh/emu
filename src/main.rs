@@ -77,18 +77,16 @@ fn delete(vm_name: &str) -> Result<(), Error> {
 fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
 
+    if !dsh.valid_filename(vm_name) {
+        return Err(Error::new("invalid VM name"));
+    }
+
     if !dsh.vm_exists(vm_name) {
         return Err(Error::new("vm doesn't exist"));
     }
 
-    match dsh.monitor_path(vm_name) {
-        Ok(path) => {
-            let monitor = std::ffi::CString::new(path).unwrap();
-            unsafe {
-                libc::mkfifo(monitor.as_ptr(), libc::S_IRUSR | libc::S_IWUSR);
-            };
-        }
-        Err(e) => return Err(e),
+    if let Err(e) = dsh.create_monitor(vm_name) {
+        return Err(e);
     }
 
     let launcher = QemuLauncher::default();
@@ -116,7 +114,15 @@ fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
 
 fn run(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
+    if !dsh.valid_filename(vm_name) {
+        return Err(Error::new("invalid VM name"));
+    }
+
     let launcher = QemuLauncher::default();
+    if let Err(e) = dsh.create_monitor(vm_name) {
+        return Err(e);
+    }
+
     let mut child = launcher.launch_vm(vm_name, cdrom, dsh)?;
 
     let exit = child.wait();
@@ -125,7 +131,7 @@ fn run(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
             if es.success() {
                 Ok(())
             } else {
-                Err(Error::new(&format!("systemctl exited uncleanly: {}", es)))
+                Err(Error::new(&format!("qemu exited uncleanly: {}", es)))
             }
         }
         Err(e) => Err(Error::from(e)),
@@ -175,33 +181,25 @@ impl Commands {
             None => return Ok(()),
         };
 
-        Ok(match cmd {
-            "create" => {
-                if let Some(vm_name) = args.value_of("NAME") {
-                    let size = args.value_of("SIZE").unwrap_or("");
-                    match size.parse::<u32>() {
-                        Ok(u) => create(vm_name, u)?,
-                        Err(e) => return Err(Error::from(e)),
-                    }
+        match cmd {
+            "create" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                let size = args.value_of("SIZE").unwrap_or("");
+                match size.parse::<u32>() {
+                    Ok(u) => create(vm_name, u)?,
+                    Err(e) => return Err(Error::from(e)),
                 }
-            }
-            "delete" => {
-                if let Some(vm_name) = args.value_of("NAME") {
-                    delete(vm_name)?
-                }
-            }
-            "supervise" => {
-                if let Some(vm_name) = args.value_of("NAME") {
-                    supervise(vm_name, args.value_of("cdrom"))?
-                }
-            }
-            "run" => {
-                if let Some(vm_name) = args.value_of("NAME") {
-                    run(vm_name, args.value_of("cdrom"))?
-                }
-            }
-            "list" => list()?,
-            _ => (),
-        })
+            }),
+            "delete" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                delete(vm_name)?
+            }),
+            "supervise" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                supervise(vm_name, args.value_of("cdrom"))?
+            }),
+            "run" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                run(vm_name, args.value_of("cdrom"))?
+            }),
+            "list" => list(),
+            _ => Ok(()),
+        }
     }
 }

@@ -137,7 +137,7 @@ impl EmulatorLauncher for QemuLauncher {
                     ),
                     String::from("-drive"),
                     format!(
-                        "driver=raw,if=virtio,file={},cache=none,media=disk",
+                        "driver=qcow2,if=virtio,file={},cache=none,media=disk",
                         img_path
                     ),
                     String::from("-nic"),

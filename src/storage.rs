@@ -10,6 +10,7 @@ pub trait StorageHandler: fmt::Debug {
     fn vm_list(&self) -> Result<Vec<String>, Error>;
     fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error>;
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
+    fn create_monitor(&self, vm_name: &str) -> Result<(), Error>;
     fn valid_filename(&self, name: &str) -> bool;
 }
 
@@ -38,6 +39,19 @@ impl StorageHandler for DirectoryStorageHandler {
 
     fn base_path(&self) -> String {
         return self.basedir.to_string();
+    }
+
+    fn create_monitor(&self, vm_name: &str) -> Result<(), Error> {
+        match self.monitor_path(vm_name) {
+            Ok(path) => {
+                let monitor = std::ffi::CString::new(path).unwrap();
+                unsafe {
+                    libc::mkfifo(monitor.as_ptr(), libc::S_IRUSR | libc::S_IWUSR);
+                };
+                Ok(())
+            }
+            Err(e) => return Err(e),
+        }
     }
 
     fn vm_root(&self, name: &str) -> Result<String, Error> {
