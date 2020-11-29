@@ -152,6 +152,30 @@ fn run(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     }
 }
 
+fn clone(from: &str, to: &str) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+
+    if !dsh.valid_filename(to) {
+        return Err(Error::new("invalid VM name"));
+    }
+
+    if dsh.vm_exists(to) {
+        return Err(Error::new("vm already exists"));
+    }
+
+    match dsh.vm_root(to) {
+        Ok(path) => std::fs::create_dir_all(path)?,
+        Err(e) => return Err(e),
+    };
+
+    if let Err(e) = dsh.create_monitor(to) {
+        return Err(e);
+    }
+
+    let imager = QEmuImager::default();
+    imager.clone(dsh, from, to)
+}
+
 pub struct Commands {}
 
 impl Commands {
@@ -189,6 +213,11 @@ impl Commands {
         (@subcommand supervised =>
             (about: "Yield a list of supervised VMs, one on each line")
         )
+        (@subcommand clone =>
+            (about: "Clone one vm to another")
+            (@arg FROM: +required "VM to clone from")
+            (@arg TO: +required "VM to clone to")
+        )
         );
 
         app.get_matches()
@@ -224,6 +253,11 @@ impl Commands {
             }),
             "list" => list(),
             "supervised" => supervised(),
+            "clone" => Ok(if let Some(from) = args.value_of("FROM") {
+                if let Some(to) = args.value_of("TO") {
+                    clone(from, to)?
+                }
+            }),
             _ => Ok(()),
         }
     }
