@@ -89,6 +89,8 @@ impl StorageHandler for DirectoryStorageHandler {
             || filename.contains("..")
             || name.contains(std::path::MAIN_SEPARATOR)
             || filename.contains(std::path::MAIN_SEPARATOR)
+            || name.contains("\0")
+            || filename.contains("\0")
         {
             return Err(Error::new("path contains invalid characters"));
         }

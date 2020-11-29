@@ -112,7 +112,7 @@ fn run(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
 struct Commands {}
 
 impl Commands {
-    fn get_clap_app(&self) -> clap::ArgMatches<'static> {
+    fn get_clap(&self) -> clap::ArgMatches<'static> {
         let app = clap::clap_app!(emu =>
         (version: "0.1.0")
         (author: "Erik Hollensbe <github@hollensbe.org>")
@@ -141,7 +141,7 @@ impl Commands {
     }
 
     fn evaluate(&self) -> Result<(), Error> {
-        let matches = self.get_clap_app();
+        let matches = self.get_clap();
         let (cmd, args) = matches.subcommand();
         let args = match args {
             Some(args) => args,
