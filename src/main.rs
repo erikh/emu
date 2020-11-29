@@ -51,6 +51,10 @@ fn create(vm_name: &str, size: u32) -> Result<(), Error> {
         Err(e) => return Err(e),
     };
 
+    if let Err(e) = dsh.create_monitor(vm_name) {
+        return Err(e);
+    }
+
     let imager = QEmuImager::default();
     imager.create(dsh, vm_name, size)
 }
@@ -85,16 +89,30 @@ fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
         return Err(Error::new("vm doesn't exist"));
     }
 
-    if let Err(e) = dsh.create_monitor(vm_name) {
-        return Err(e);
-    }
-
     let launcher = QemuLauncher::default();
     let t = template::Systemd::new(Box::new(launcher), dsh);
     if let Err(e) = t.write(vm_name, cdrom) {
         return Err(e);
     }
 
+    reload_systemd()
+}
+
+fn unsupervise(vm_name: &str) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+
+    if !dsh.valid_filename(vm_name) {
+        return Err(Error::new("invalid VM name"));
+    }
+
+    let launcher = QemuLauncher::default();
+    let t = template::Systemd::new(Box::new(launcher), dsh);
+    t.remove(vm_name)?;
+
+    reload_systemd()
+}
+
+fn reload_systemd() -> Result<(), Error> {
     match Command::new("/bin/systemctl")
         .args(vec!["--user", "daemon-reload"])
         .stderr(Stdio::null())
@@ -119,10 +137,6 @@ fn run(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     }
 
     let launcher = QemuLauncher::default();
-    if let Err(e) = dsh.create_monitor(vm_name) {
-        return Err(e);
-    }
-
     let mut child = launcher.launch_vm(vm_name, cdrom, dsh)?;
 
     let exit = child.wait();
@@ -160,6 +174,10 @@ impl Commands {
             (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image -- will be embedded into supervision")
             (@arg NAME: +required "Name of VM")
         )
+        (@subcommand unsupervise =>
+            (about: "Remove supervision of an already existing VM")
+            (@arg NAME: +required "Name of VM")
+        )
         (@subcommand run =>
             (about: "Just run a pre-created VM; no systemd involved")
             (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image -- will be embedded into supervision")
@@ -194,6 +212,9 @@ impl Commands {
             }),
             "supervise" => Ok(if let Some(vm_name) = args.value_of("NAME") {
                 supervise(vm_name, args.value_of("cdrom"))?
+            }),
+            "unsupervise" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                unsupervise(vm_name)?
             }),
             "run" => Ok(if let Some(vm_name) = args.value_of("NAME") {
                 run(vm_name, args.value_of("cdrom"))?

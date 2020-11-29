@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::launcher::EmulatorLauncher;
-use crate::storage::DirectoryStorageHandler;
+use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use serde::Serialize;
 use std::path::PathBuf;
 use tinytemplate::TinyTemplate;
@@ -48,13 +48,9 @@ impl Systemd {
     fn template(&self, vm_name: &str, cdrom: Option<&str>) -> Result<String, Error> {
         let mut t = TinyTemplate::new();
         t.add_template("systemd", SYSTEMD_UNIT)?;
-        let args = match self
+        let args = self
             .launcher
-            .emulator_args(vm_name, cdrom, self.storage.clone())
-        {
-            Ok(args) => args,
-            Err(e) => return Err(e),
-        };
+            .emulator_args(vm_name, cdrom, self.storage.clone())?;
 
         let data = Data::new(String::from(vm_name), self.launcher.emulator_path(), args);
         match t.render("systemd", &data) {
@@ -63,21 +59,43 @@ impl Systemd {
         }
     }
 
-    pub fn write(&self, vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
+    fn systemd_dir(&self) -> Result<PathBuf, Error> {
         if let Some(config_dir) = dirs::config_dir() {
-            // FIXME check path trav on vm_name
-            let path = PathBuf::from(config_dir)
-                .join(SYSTEMD_USER_DIR)
-                .join(format!("{}.service", vm_name));
-
-            let template = self.template(vm_name, cdrom)?;
-
-            match std::fs::write(path, template) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(Error::from(e)),
-            }
+            Ok(PathBuf::from(config_dir).join(SYSTEMD_USER_DIR))
         } else {
             Err(Error::new("could not locate configuration directory"))
+        }
+    }
+
+    pub fn service_filename(&self, vm_name: &str) -> Result<String, Error> {
+        if !self.storage.valid_filename(vm_name) {
+            return Err(Error::new("invalid vm name"));
+        }
+
+        let path = self.systemd_dir()?.join(format!("{}.emu.service", vm_name));
+        Ok(String::from(path.to_str().unwrap()))
+    }
+
+    pub fn write(&self, vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
+        let systemd_dir = self.systemd_dir()?;
+
+        std::fs::create_dir_all(systemd_dir)?;
+
+        let path = self.service_filename(vm_name)?;
+        let template = self.template(vm_name, cdrom)?;
+
+        match std::fs::write(path, template) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Error::from(e)),
+        }
+    }
+
+    pub fn remove(&self, vm_name: &str) -> Result<(), Error> {
+        let path = self.service_filename(vm_name)?;
+
+        match std::fs::remove_file(path) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Error::from(e)),
         }
     }
 }
