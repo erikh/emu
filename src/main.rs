@@ -5,15 +5,12 @@ mod launcher;
 mod storage;
 mod template;
 
-use error::Error;
-
 #[macro_use]
 extern crate clap;
 
-fn main() -> Result<(), Error> {
+fn main() {
     let c = commands::Commands {};
     if let Err(e) = c.evaluate() {
         println!("error: {}", e.to_string());
     }
-    return Ok(());
 }
