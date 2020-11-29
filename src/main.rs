@@ -38,6 +38,10 @@ fn list() -> Result<(), Error> {
 fn create(vm_name: &str, size: u32) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
 
+    if !dsh.valid_filename(vm_name) {
+        return Err(Error::new("invalid VM name"));
+    }
+
     if dsh.vm_exists(vm_name) {
         return Err(Error::new("vm already exists"));
     }
@@ -49,6 +53,25 @@ fn create(vm_name: &str, size: u32) -> Result<(), Error> {
 
     let imager = QEmuImager::default();
     imager.create(dsh, vm_name, size)
+}
+
+fn delete(vm_name: &str) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+
+    if !dsh.valid_filename(vm_name) {
+        return Err(Error::new("invalid VM name"));
+    }
+
+    if !dsh.vm_exists(vm_name) {
+        return Err(Error::new("vm doesn't exist"));
+    }
+
+    match dsh.vm_root(vm_name) {
+        Ok(path) => std::fs::remove_dir_all(path)?,
+        Err(e) => return Err(e),
+    };
+
+    Ok(())
 }
 
 fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
@@ -122,6 +145,10 @@ impl Commands {
             (@arg NAME: +required "Name of VM")
             (@arg SIZE: +required "Size in GB of VM image")
         )
+        (@subcommand delete =>
+            (about: "Delete existing vm")
+            (@arg NAME: +required "Name of VM")
+        )
         (@subcommand supervise =>
             (about: "Configure supervision of an already existing VM")
             (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image -- will be embedded into supervision")
@@ -156,6 +183,11 @@ impl Commands {
                         Ok(u) => create(vm_name, u)?,
                         Err(e) => return Err(Error::from(e)),
                     }
+                }
+            }
+            "delete" => {
+                if let Some(vm_name) = args.value_of("NAME") {
+                    delete(vm_name)?
                 }
             }
             "supervise" => {
