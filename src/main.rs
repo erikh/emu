@@ -35,6 +35,22 @@ fn list() -> Result<(), Error> {
     }
 }
 
+fn supervised() -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+
+    let launcher = QemuLauncher::default();
+    let t = template::Systemd::new(Box::new(launcher), dsh);
+    match t.list() {
+        Ok(list) => {
+            for vm in list {
+                println!("{}", vm)
+            }
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
+}
+
 fn create(vm_name: &str, size: u32) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
 
@@ -186,6 +202,9 @@ impl Commands {
         (@subcommand list =>
             (about: "Yield a list of VMs, one on each line")
         )
+        (@subcommand supervised =>
+            (about: "Yield a list of supervised VMs, one on each line")
+        )
         );
 
         app.get_matches()
@@ -220,6 +239,7 @@ impl Commands {
                 run(vm_name, args.value_of("cdrom"))?
             }),
             "list" => list(),
+            "supervised" => supervised(),
             _ => Ok(()),
         }
     }

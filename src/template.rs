@@ -98,4 +98,20 @@ impl Systemd {
             Err(e) => Err(Error::from(e)),
         }
     }
+
+    pub fn list(&self) -> Result<Vec<String>, Error> {
+        let mut v: Vec<String> = Vec::new();
+        for item in std::fs::read_dir(self.systemd_dir()?)? {
+            match item {
+                Ok(item) => {
+                    let filename = String::from(item.file_name().to_str().unwrap());
+                    if filename.ends_with(".emu.service") {
+                        v.push(filename.replace(".emu.service", ""))
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+        Ok(v)
+    }
 }
