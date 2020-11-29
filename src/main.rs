@@ -22,6 +22,19 @@ fn main() -> Result<(), Error> {
     return Ok(());
 }
 
+fn list() -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+    match dsh.vm_list() {
+        Ok(list) => {
+            for vm in list {
+                println!("{}", vm)
+            }
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
+}
+
 fn create(vm_name: &str, size: u32) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
 
@@ -119,6 +132,9 @@ impl Commands {
             (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image -- will be embedded into supervision")
             (@arg NAME: +required "Name of VM")
         )
+        (@subcommand list =>
+            (about: "Yield a list of VMs, one on each line")
+        )
         );
 
         app.get_matches()
@@ -152,6 +168,7 @@ impl Commands {
                     run(vm_name, args.value_of("cdrom"))?
                 }
             }
+            "list" => list()?,
             _ => (),
         })
     }
