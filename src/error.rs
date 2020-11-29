@@ -13,6 +13,13 @@ impl Error {
     }
 }
 
+impl From<std::num::ParseIntError> for Error {
+    fn from(error: std::num::ParseIntError) -> Self {
+        let errstr = error.to_string();
+        Error { message: errstr }
+    }
+}
+
 impl From<std::io::Error> for Error {
     fn from(error: std::io::Error) -> Self {
         let errstr = error.to_string();

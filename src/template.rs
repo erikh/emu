@@ -48,7 +48,10 @@ impl Systemd {
     fn template(&self, vm_name: &str, cdrom: Option<&str>) -> Result<String, Error> {
         let mut t = TinyTemplate::new();
         t.add_template("systemd", SYSTEMD_UNIT)?;
-        let args = match self.launcher.emulator_args(vm_name, cdrom, self.storage) {
+        let args = match self
+            .launcher
+            .emulator_args(vm_name, cdrom, self.storage.clone())
+        {
             Ok(args) => args,
             Err(e) => return Err(e),
         };

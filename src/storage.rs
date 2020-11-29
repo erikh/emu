@@ -12,9 +12,22 @@ pub trait StorageHandler: fmt::Debug {
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct DirectoryStorageHandler {
-    pub basedir: &'static str,
+    pub basedir: String,
+}
+
+impl Default for DirectoryStorageHandler {
+    fn default() -> Self {
+        let dir = dirs::data_dir().unwrap_or(dirs::home_dir().unwrap());
+        let root = PathBuf::from(dir).join("emu");
+
+        std::fs::create_dir_all(root.clone()).unwrap_or(());
+
+        Self {
+            basedir: String::from(root.to_str().unwrap()),
+        }
+    }
 }
 
 impl StorageHandler for DirectoryStorageHandler {
