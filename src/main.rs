@@ -43,8 +43,8 @@ fn create(vm_name: &str, size: u32) -> Result<(), Error> {
     }
 
     match dsh.vm_root(vm_name) {
-        Some(path) => std::fs::create_dir_all(path)?,
-        None => return Err(Error::new("could not construct path")),
+        Ok(path) => std::fs::create_dir_all(path)?,
+        Err(e) => return Err(e),
     };
 
     let imager = QEmuImager::default();
@@ -59,13 +59,13 @@ fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     }
 
     match dsh.monitor_path(vm_name) {
-        Some(path) => {
+        Ok(path) => {
             let monitor = std::ffi::CString::new(path).unwrap();
             unsafe {
                 libc::mkfifo(monitor.as_ptr(), libc::S_IRUSR | libc::S_IWUSR);
             };
         }
-        None => return Err(Error::new("error calculating qemu monitor path")),
+        Err(e) => return Err(e),
     }
 
     let launcher = QemuLauncher::default();

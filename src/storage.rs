@@ -4,12 +4,13 @@ use std::path::PathBuf;
 
 pub trait StorageHandler: fmt::Debug {
     fn base_path(&self) -> String;
-    fn vm_root(&self, name: &str) -> Option<String>;
-    fn monitor_path(&self, vm_name: &str) -> Option<String>;
+    fn vm_root(&self, name: &str) -> Result<String, Error>;
+    fn monitor_path(&self, vm_name: &str) -> Result<String, Error>;
     fn vm_exists(&self, name: &str) -> bool;
     fn vm_list(&self) -> Result<Vec<String>, Error>;
     fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error>;
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
+    fn valid_filename(&self, name: &str) -> bool;
 }
 
 #[derive(Debug, Clone)]
@@ -31,30 +32,40 @@ impl Default for DirectoryStorageHandler {
 }
 
 impl StorageHandler for DirectoryStorageHandler {
+    fn valid_filename(&self, name: &str) -> bool {
+        !(name.contains("..") || name.contains(std::path::MAIN_SEPARATOR) || name.contains("\0"))
+    }
+
     fn base_path(&self) -> String {
         return self.basedir.to_string();
     }
 
-    fn vm_root(&self, name: &str) -> Option<String> {
+    fn vm_root(&self, name: &str) -> Result<String, Error> {
+        if !self.valid_filename(name) {
+            return Err(Error::new("path contains invalid characters"));
+        }
+
         match PathBuf::from(self.base_path()).join(name).to_str() {
-            None => None,
-            Some(s) => Some(String::from(s)),
+            None => Err(Error::new("could not manage path")),
+            Some(s) => Ok(String::from(s)),
         }
     }
 
-    fn monitor_path(&self, vm_name: &str) -> Option<String> {
-        Some(String::from(
-            PathBuf::from(self.vm_root(vm_name)?).join("mon").to_str()?,
-        ))
+    fn monitor_path(&self, vm_name: &str) -> Result<String, Error> {
+        if let Some(path) = PathBuf::from(self.vm_root(vm_name)?).join("mon").to_str() {
+            Ok(String::from(path))
+        } else {
+            Err(Error::new("could not calculate monitor path"))
+        }
     }
 
     fn vm_exists(&self, name: &str) -> bool {
         match self.vm_root(name) {
-            Some(vmpath) => match std::fs::metadata(vmpath) {
+            Ok(vmpath) => match std::fs::metadata(vmpath) {
                 Ok(_) => true,
                 Err(_) => false,
             },
-            None => false,
+            Err(_) => false,
         }
     }
 
@@ -85,13 +96,7 @@ impl StorageHandler for DirectoryStorageHandler {
     }
 
     fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error> {
-        if name.contains("..")
-            || filename.contains("..")
-            || name.contains(std::path::MAIN_SEPARATOR)
-            || filename.contains(std::path::MAIN_SEPARATOR)
-            || name.contains("\0")
-            || filename.contains("\0")
-        {
+        if !self.valid_filename(name) || !self.valid_filename(filename) {
             return Err(Error::new("path contains invalid characters"));
         }
 
