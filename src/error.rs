@@ -1,4 +1,5 @@
 use std::fmt;
+use std::sync::mpsc::RecvError;
 
 #[derive(Debug)]
 pub struct Error {
@@ -15,6 +16,27 @@ impl Error {
 
 impl From<clap::Error> for Error {
     fn from(error: clap::Error) -> Self {
+        let errstr = error.to_string();
+        Error { message: errstr }
+    }
+}
+
+impl From<RecvError> for Error {
+    fn from(error: RecvError) -> Self {
+        let errstr = error.to_string();
+        Error { message: errstr }
+    }
+}
+
+impl From<nix::Error> for Error {
+    fn from(error: nix::Error) -> Self {
+        let errstr = error.to_string();
+        Error { message: errstr }
+    }
+}
+
+impl From<rtnetlink::Error> for Error {
+    fn from(error: rtnetlink::Error) -> Self {
         let errstr = error.to_string();
         Error { message: errstr }
     }

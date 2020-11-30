@@ -2,6 +2,7 @@ mod commands;
 mod error;
 mod image;
 mod launcher;
+mod network;
 mod storage;
 mod template;
 
