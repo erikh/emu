@@ -12,3 +12,4 @@ serde = { version = "1.0.117", features = ["derive"] }
 dirs = "3.0.1"
 clap = "2"
 libc = "0.2"
+tokio = { version = "0.3", features = [ "full" ] }
