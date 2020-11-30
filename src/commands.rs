@@ -183,8 +183,8 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
 pub struct Commands {}
 
 impl Commands {
-    fn get_clap(&self) -> clap::ArgMatches<'static> {
-        let app = clap::clap_app!(emu =>
+    fn get_clap(&self) -> clap::App<'static, 'static> {
+        clap::clap_app!(emu =>
         (version: "0.1.0")
         (author: "Erik Hollensbe <github@hollensbe.org>")
         (about: "Control qemu & more")
@@ -222,17 +222,16 @@ impl Commands {
             (@arg FROM: +required "VM to clone from")
             (@arg TO: +required "VM to clone to")
         )
-        );
-
-        app.get_matches()
+        )
     }
 
     pub fn evaluate(&self) -> Result<(), Error> {
-        let matches = self.get_clap();
+        let app = self.get_clap();
+        let matches = app.clone().get_matches();
         let (cmd, args) = matches.subcommand();
         let args = match args {
             Some(args) => args,
-            None => return Ok(()),
+            None => return Ok(app.write_help(&mut std::io::stderr().lock())?),
         };
 
         match cmd {
@@ -262,7 +261,7 @@ impl Commands {
                     clone(from, to)?
                 }
             }),
-            _ => Ok(()),
+            _ => Ok(app.write_help(&mut std::io::stderr().lock())?),
         }
     }
 }
