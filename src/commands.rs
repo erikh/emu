@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::process::{Command, Stdio};
 
 use crate::error::Error;
@@ -181,10 +182,10 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
     imager.clone(from, to)
 }
 
-fn test() -> Result<(), Error> {
+async fn test() -> Result<(), Error> {
     let bm = BridgeManager {};
     let network = bm.create_network("test")?;
-    let interface = bm.create_interface(network)?;
+    let interface = bm.create_interface(network).await?;
 
     Ok(println!("{:?}", interface))
 }
@@ -237,13 +238,19 @@ impl Commands {
         )
     }
 
-    pub fn evaluate(&self) -> Result<(), Error> {
+    pub async fn evaluate(&self) -> Result<(), Error> {
         let app = self.get_clap();
         let matches = app.clone().get_matches();
         let (cmd, args) = matches.subcommand();
         let args = match args {
             Some(args) => args,
-            None => return Ok(app.write_help(&mut std::io::stderr().lock())?),
+            None => {
+                let stderr = std::io::stderr();
+                let mut lock = stderr.lock();
+                app.clone().write_long_help(&mut lock)?;
+                lock.write_all(b"\n\n")?;
+                return Ok(());
+            }
         };
 
         match cmd {
@@ -273,8 +280,8 @@ impl Commands {
                     clone(from, to)?
                 }
             }),
-            "test" => test(),
-            _ => Ok(app.write_help(&mut std::io::stderr().lock())?),
+            "test" => test().await,
+            _ => Ok(()),
         }
     }
 }
