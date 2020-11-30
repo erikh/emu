@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 use crate::error::Error;
 use crate::image::{Imager, QEmuImager};
 use crate::launcher::{EmulatorLauncher, QemuLauncher};
+use crate::network::{BridgeManager, NetworkManager};
 use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use crate::template::Systemd;
 
@@ -180,48 +181,59 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
     imager.clone(from, to)
 }
 
+fn test() -> Result<(), Error> {
+    let bm = BridgeManager {};
+    let network = bm.create_network("test")?;
+    let interface = bm.create_interface(network)?;
+
+    Ok(println!("{:?}", interface))
+}
+
 pub struct Commands {}
 
 impl Commands {
     fn get_clap(&self) -> clap::App<'static, 'static> {
         clap::clap_app!(emu =>
-        (version: "0.1.0")
-        (author: "Erik Hollensbe <github@hollensbe.org>")
-        (about: "Control qemu & more")
-        (@subcommand create =>
-            (about: "Create vm with a sized image")
-            (@arg NAME: +required "Name of VM")
-            (@arg SIZE: +required "Size in GB of VM image")
-        )
-        (@subcommand delete =>
-            (about: "Delete existing vm")
-            (@arg NAME: +required "Name of VM")
-        )
-        (@subcommand supervise =>
-            (about: "Configure supervision of an already existing VM")
-            (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image -- will be embedded into supervision")
-            (@arg NAME: +required "Name of VM")
-        )
-        (@subcommand unsupervise =>
-            (about: "Remove supervision of an already existing VM")
-            (@arg NAME: +required "Name of VM")
-        )
-        (@subcommand run =>
-            (about: "Just run a pre-created VM; no systemd involved")
-            (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image")
-            (@arg NAME: +required "Name of VM")
-        )
-        (@subcommand list =>
-            (about: "Yield a list of VMs, one on each line")
-        )
-        (@subcommand supervised =>
-            (about: "Yield a list of supervised VMs, one on each line")
-        )
-        (@subcommand clone =>
-            (about: "Clone one vm to another")
-            (@arg FROM: +required "VM to clone from")
-            (@arg TO: +required "VM to clone to")
-        )
+            (version: "0.1.0")
+            (author: "Erik Hollensbe <github@hollensbe.org>")
+            (about: "Control qemu & more")
+            (@subcommand create =>
+                (about: "Create vm with a sized image")
+                (@arg NAME: +required "Name of VM")
+                (@arg SIZE: +required "Size in GB of VM image")
+            )
+            (@subcommand delete =>
+                (about: "Delete existing vm")
+                (@arg NAME: +required "Name of VM")
+            )
+            (@subcommand supervise =>
+                (about: "Configure supervision of an already existing VM")
+                (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image -- will be embedded into supervision")
+                (@arg NAME: +required "Name of VM")
+            )
+            (@subcommand unsupervise =>
+                (about: "Remove supervision of an already existing VM")
+                (@arg NAME: +required "Name of VM")
+            )
+            (@subcommand run =>
+                (about: "Just run a pre-created VM; no systemd involved")
+                (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image")
+                (@arg NAME: +required "Name of VM")
+            )
+            (@subcommand list =>
+                (about: "Yield a list of VMs, one on each line")
+            )
+            (@subcommand supervised =>
+                (about: "Yield a list of supervised VMs, one on each line")
+            )
+            (@subcommand clone =>
+                (about: "Clone one vm to another")
+                (@arg FROM: +required "VM to clone from")
+                (@arg TO: +required "VM to clone to")
+            )
+            (@subcommand test =>
+                (about: "you have a development build! :) p.s. don't run this")
+            )
         )
     }
 
@@ -261,6 +273,7 @@ impl Commands {
                     clone(from, to)?
                 }
             }),
+            "test" => test(),
             _ => Ok(app.write_help(&mut std::io::stderr().lock())?),
         }
     }
