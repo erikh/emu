@@ -176,6 +176,8 @@ dependencies = [
  "async-trait",
  "clap",
  "dirs",
+ "futures",
+ "futures-channel",
  "libc",
  "network_bridge",
  "nix",

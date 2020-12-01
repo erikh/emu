@@ -1,70 +1,87 @@
 use crate::error::Error;
 use async_trait::async_trait;
-use network_bridge::{create_bridge, delete_bridge};
-use std::sync::mpsc::{channel, Sender};
+use futures::TryStreamExt;
 
 #[derive(Debug, Clone)]
 pub struct Network {
     name: String,
-    index: i32,
+    index: u32,
 }
 
 #[derive(Debug, Clone)]
 pub struct Interface {
     name: String,
     peer_name: String,
+    index: u32,
 }
 
 #[async_trait]
 pub trait NetworkManager {
-    fn create_network(&self, name: &str) -> Result<Network, Error>;
-    fn delete_network(&self, network: Network) -> Result<(), Error>;
-    async fn create_interface(&self, network: Network) -> Result<Interface, Error>;
-    fn delete_interface(&self, interface: Interface) -> Result<(), Error>;
-    fn bind(&self, network: Network, interface: Interface) -> Result<(), Error>;
-    fn unbind(&self, network: Network, interface: Interface) -> Result<(), Error>;
+    async fn create_network(&self, name: &str) -> Result<Network, Error>;
+    async fn delete_network(&self, network: &Network) -> Result<(), Error>;
+    async fn create_interface(&self, network: &Network) -> Result<Interface, Error>;
+    fn delete_interface(&self, interface: &Interface) -> Result<(), Error>;
+    async fn bind(&self, network: &Network, interface: &Interface) -> Result<(), Error>;
+    fn unbind(&self, network: &Network, interface: &Interface) -> Result<(), Error>;
 }
 
 pub struct BridgeManager {}
 
 #[async_trait]
 impl NetworkManager for BridgeManager {
-    fn create_network(&self, name: &str) -> Result<Network, Error> {
-        match create_bridge(name) {
-            Ok(index) => Ok(Network {
-                name: String::from(name),
-                index,
-            }),
-            Err(e) => Err(Error::from(e)),
-        }
-    }
-
-    fn delete_network(&self, network: Network) -> Result<(), Error> {
-        match delete_bridge(network.name.as_str()) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(Error::from(e)),
-        }
-    }
-
-    async fn create_interface(&self, network: Network) -> Result<Interface, Error> {
+    async fn create_network(&self, name: &str) -> Result<Network, Error> {
         match rtnetlink::new_connection() {
             Ok(connection) => {
-                let (_, handle, _) = connection;
+                let (c, handle, r) = connection;
+                tokio::spawn(c);
 
-                println!("here");
                 let resp = handle
                     .link()
                     .add()
-                    .veth(network.name.clone() + "-1-1", network.name.clone() + "-1-2")
+                    .bridge(String::from(name))
                     .execute()
                     .await;
-
-                println!("here2");
                 match resp {
-                    Ok(_) => Ok(Interface {
-                        name: network.name.clone() + "-1-1",
-                        peer_name: network.name.clone() + "-1-2",
-                    }),
+                    Ok(_) => {
+                        let resp = handle
+                            .link()
+                            .get()
+                            .set_name_filter(String::from(name))
+                            .execute()
+                            .try_next()
+                            .await;
+                        drop(r);
+                        match resp {
+                            Ok(Some(resp)) => Ok(Network {
+                                name: String::from(name),
+                                index: resp.header.index,
+                            }),
+                            Err(e) => Err(Error::from(e)),
+                            Ok(None) => {
+                                Err(Error::new("could not retrieve interface after creating it"))
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        drop(r);
+                        Err(Error::from(e))
+                    }
+                }
+            }
+            Err(e) => Err(Error::from(e)),
+        }
+    }
+
+    async fn delete_network(&self, network: &Network) -> Result<(), Error> {
+        match rtnetlink::new_connection() {
+            Ok(connection) => {
+                let (c, handle, r) = connection;
+                tokio::spawn(c);
+
+                let resp = handle.link().del(network.index).execute().await;
+                drop(r);
+                match resp {
+                    Ok(_) => Ok(()),
                     Err(e) => Err(Error::from(e)),
                 }
             }
@@ -72,15 +89,81 @@ impl NetworkManager for BridgeManager {
         }
     }
 
-    fn delete_interface(&self, interface: Interface) -> Result<(), Error> {
+    async fn create_interface(&self, network: &Network) -> Result<Interface, Error> {
+        match rtnetlink::new_connection() {
+            Ok(connection) => {
+                let (c, handle, r) = connection;
+                tokio::spawn(c);
+
+                let resp = handle
+                    .link()
+                    .add()
+                    .veth(network.name.clone() + "-1-1", network.name.clone() + "-1-2")
+                    .execute()
+                    .await;
+
+                match resp {
+                    Ok(_) => {
+                        let resp = handle
+                            .link()
+                            .get()
+                            .set_name_filter(network.name.clone() + "-1-1")
+                            .execute()
+                            .try_next()
+                            .await;
+
+                        drop(r);
+
+                        match resp {
+                            Ok(Some(resp)) => Ok(Interface {
+                                name: network.name.clone() + "-1-1",
+                                peer_name: network.name.clone() + "-1-2",
+                                index: resp.header.index,
+                            }),
+                            Err(e) => Err(Error::from(e)),
+                            Ok(None) => {
+                                Err(Error::new("could not retrieve interface after creating it"))
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        drop(r);
+                        Err(Error::from(e))
+                    }
+                }
+            }
+            Err(e) => Err(Error::from(e)),
+        }
+    }
+
+    fn delete_interface(&self, interface: &Interface) -> Result<(), Error> {
         Err(Error::new("unimplemented"))
     }
 
-    fn bind(&self, network: Network, interface: Interface) -> Result<(), Error> {
-        Err(Error::new("unimplemented"))
+    async fn bind(&self, network: &Network, interface: &Interface) -> Result<(), Error> {
+        match rtnetlink::new_connection() {
+            Ok(connection) => {
+                let (c, handle, r) = connection;
+                tokio::spawn(c);
+
+                let resp = handle
+                    .link()
+                    .set(interface.index)
+                    .master(network.index)
+                    .execute()
+                    .await;
+
+                drop(r);
+                match resp {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(Error::from(e)),
+                }
+            }
+            Err(e) => Err(Error::from(e)),
+        }
     }
 
-    fn unbind(&self, network: Network, interface: Interface) -> Result<(), Error> {
+    fn unbind(&self, network: &Network, interface: &Interface) -> Result<(), Error> {
         Err(Error::new("unimplemented"))
     }
 }

@@ -1,5 +1,5 @@
+use futures_channel::mpsc::TryRecvError;
 use std::fmt;
-use std::sync::mpsc::RecvError;
 
 #[derive(Debug)]
 pub struct Error {
@@ -21,8 +21,8 @@ impl From<clap::Error> for Error {
     }
 }
 
-impl From<RecvError> for Error {
-    fn from(error: RecvError) -> Self {
+impl From<TryRecvError> for Error {
+    fn from(error: TryRecvError) -> Self {
         let errstr = error.to_string();
         Error { message: errstr }
     }
