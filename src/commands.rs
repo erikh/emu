@@ -187,9 +187,13 @@ async fn test() -> Result<(), Error> {
     let network = bm.create_network("test").await?;
     let interface = bm.create_interface(&network, 1).await?;
     bm.bind(&network, &interface).await?;
+    println!("{}", bm.exists_network(&network).await?);
+    println!("{}", bm.exists_interface(&interface).await?);
     bm.unbind(&interface).await?;
     bm.delete_interface(&interface).await?;
     bm.delete_network(&network).await?;
+    println!("{}", bm.exists_network(&network).await?);
+    println!("{}", bm.exists_interface(&interface).await?);
 
     Ok(println!("{:?}", interface))
 }
