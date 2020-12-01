@@ -13,16 +13,17 @@ pub struct Interface {
     name: String,
     peer_name: String,
     index: u32,
+    id: u32,
 }
 
 #[async_trait]
 pub trait NetworkManager {
     async fn create_network(&self, name: &str) -> Result<Network, Error>;
     async fn delete_network(&self, network: &Network) -> Result<(), Error>;
-    async fn create_interface(&self, network: &Network) -> Result<Interface, Error>;
-    fn delete_interface(&self, interface: &Interface) -> Result<(), Error>;
+    async fn create_interface(&self, network: &Network, id: u32) -> Result<Interface, Error>;
+    async fn delete_interface(&self, interface: &Interface) -> Result<(), Error>;
     async fn bind(&self, network: &Network, interface: &Interface) -> Result<(), Error>;
-    fn unbind(&self, network: &Network, interface: &Interface) -> Result<(), Error>;
+    async fn unbind(&self, interface: &Interface) -> Result<(), Error>;
 }
 
 pub struct BridgeManager {}
@@ -35,10 +36,12 @@ impl NetworkManager for BridgeManager {
                 let (c, handle, r) = connection;
                 tokio::spawn(c);
 
+                let bridge_name = String::from("emu.") + name;
+
                 let resp = handle
                     .link()
                     .add()
-                    .bridge(String::from(name))
+                    .bridge(bridge_name.clone())
                     .execute()
                     .await;
                 match resp {
@@ -46,19 +49,19 @@ impl NetworkManager for BridgeManager {
                         let resp = handle
                             .link()
                             .get()
-                            .set_name_filter(String::from(name))
+                            .set_name_filter(bridge_name.clone())
                             .execute()
                             .try_next()
                             .await;
                         drop(r);
                         match resp {
                             Ok(Some(resp)) => Ok(Network {
-                                name: String::from(name),
+                                name: bridge_name.clone(),
                                 index: resp.header.index,
                             }),
                             Err(e) => Err(Error::from(e)),
                             Ok(None) => {
-                                Err(Error::new("could not retrieve interface after creating it"))
+                                Err(Error::new("could not retrieve network after creating it"))
                             }
                         }
                     }
@@ -89,16 +92,18 @@ impl NetworkManager for BridgeManager {
         }
     }
 
-    async fn create_interface(&self, network: &Network) -> Result<Interface, Error> {
+    async fn create_interface(&self, network: &Network, id: u32) -> Result<Interface, Error> {
         match rtnetlink::new_connection() {
             Ok(connection) => {
                 let (c, handle, r) = connection;
                 tokio::spawn(c);
 
+                let if_name = network.name.clone() + &format!("-{}", id);
+                let peer_name = network.name.clone() + &format!("-{}-peer", id);
                 let resp = handle
                     .link()
                     .add()
-                    .veth(network.name.clone() + "-1-1", network.name.clone() + "-1-2")
+                    .veth(if_name.clone(), peer_name.clone())
                     .execute()
                     .await;
 
@@ -107,7 +112,7 @@ impl NetworkManager for BridgeManager {
                         let resp = handle
                             .link()
                             .get()
-                            .set_name_filter(network.name.clone() + "-1-1")
+                            .set_name_filter(if_name.clone())
                             .execute()
                             .try_next()
                             .await;
@@ -116,9 +121,10 @@ impl NetworkManager for BridgeManager {
 
                         match resp {
                             Ok(Some(resp)) => Ok(Interface {
-                                name: network.name.clone() + "-1-1",
-                                peer_name: network.name.clone() + "-1-2",
+                                name: if_name,
+                                peer_name: peer_name.clone(),
                                 index: resp.header.index,
+                                id,
                             }),
                             Err(e) => Err(Error::from(e)),
                             Ok(None) => {
@@ -136,8 +142,22 @@ impl NetworkManager for BridgeManager {
         }
     }
 
-    fn delete_interface(&self, interface: &Interface) -> Result<(), Error> {
-        Err(Error::new("unimplemented"))
+    async fn delete_interface(&self, interface: &Interface) -> Result<(), Error> {
+        match rtnetlink::new_connection() {
+            Ok(connection) => {
+                let (c, handle, r) = connection;
+                tokio::spawn(c);
+
+                let resp = handle.link().del(interface.index).execute().await;
+
+                drop(r);
+                match resp {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(Error::from(e)),
+                }
+            }
+            Err(e) => Err(Error::from(e)),
+        }
     }
 
     async fn bind(&self, network: &Network, interface: &Interface) -> Result<(), Error> {
@@ -163,7 +183,21 @@ impl NetworkManager for BridgeManager {
         }
     }
 
-    fn unbind(&self, network: &Network, interface: &Interface) -> Result<(), Error> {
-        Err(Error::new("unimplemented"))
+    async fn unbind(&self, interface: &Interface) -> Result<(), Error> {
+        match rtnetlink::new_connection() {
+            Ok(connection) => {
+                let (c, handle, r) = connection;
+                tokio::spawn(c);
+
+                let resp = handle.link().set(interface.index).master(0).execute().await;
+
+                drop(r);
+                match resp {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(Error::from(e)),
+                }
+            }
+            Err(e) => Err(Error::from(e)),
+        }
     }
 }

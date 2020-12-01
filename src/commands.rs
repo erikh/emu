@@ -185,8 +185,11 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
 async fn test() -> Result<(), Error> {
     let bm = BridgeManager {};
     let network = bm.create_network("test").await?;
-    let interface = bm.create_interface(&network).await?;
+    let interface = bm.create_interface(&network, 1).await?;
     bm.bind(&network, &interface).await?;
+    bm.unbind(&interface).await?;
+    bm.delete_interface(&interface).await?;
+    bm.delete_network(&network).await?;
 
     Ok(println!("{:?}", interface))
 }
