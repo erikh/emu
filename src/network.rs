@@ -2,6 +2,8 @@ use crate::error::Error;
 use async_trait::async_trait;
 use futures::TryStreamExt;
 
+const NAME_PREFIX: &str = "emu.";
+
 #[derive(Debug, Clone)]
 pub struct Network {
     name: String,
@@ -38,7 +40,7 @@ impl NetworkManager for BridgeManager {
                 let (c, handle, r) = connection;
                 tokio::spawn(c);
 
-                let bridge_name = String::from("emu.") + name;
+                let bridge_name = String::from(NAME_PREFIX) + name;
 
                 let resp = handle
                     .link()
