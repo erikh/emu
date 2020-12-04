@@ -182,7 +182,7 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
     imager.clone(from, to)
 }
 
-async fn test() -> Result<(), Error> {
+async fn network_test() -> Result<(), Error> {
     let bm = BridgeManager {};
     let network = bm.create_network("test").await?;
     let interface = bm.create_interface(&network, 1).await?;
@@ -240,9 +240,9 @@ impl Commands {
                 (@arg FROM: +required "VM to clone from")
                 (@arg TO: +required "VM to clone to")
             )
-            (@subcommand test =>
-                (about: "you have a development build! :) p.s. don't run this")
-            )
+            // (@subcommand network_test =>
+            //     (about: "you have a development build! :) p.s. don't run this")
+            // )
         )
     }
 
@@ -288,7 +288,7 @@ impl Commands {
                     clone(from, to)?
                 }
             }),
-            "test" => test().await,
+            "network_test" => network_test().await,
             _ => Ok(()),
         }
     }
