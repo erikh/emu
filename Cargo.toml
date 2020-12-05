@@ -13,12 +13,7 @@ dirs = "3.0.1"
 clap = "2"
 libc = "0.2"
 tokio = { version = "0.2", features = [ "full" ] }
-network_bridge = "0.1.1"
-nix = "0.11"
 rtnetlink = "0.6.0"
 async-trait = "0.1"
-futures-channel = ">=0"
 futures = ">=0"
-qapi = { version = "0.6", features = ["qmp", "tokio"] }
-qapi-qmp = ">=0"
 serde_json = ">=0"

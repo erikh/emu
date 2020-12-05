@@ -1,4 +1,3 @@
-use futures_channel::mpsc::TryRecvError;
 use std::fmt;
 
 #[derive(Debug)]
@@ -21,29 +20,8 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<qapi::ExecuteError> for Error {
-    fn from(error: qapi::ExecuteError) -> Self {
-        let errstr = error.to_string();
-        Error { message: errstr }
-    }
-}
-
 impl From<clap::Error> for Error {
     fn from(error: clap::Error) -> Self {
-        let errstr = error.to_string();
-        Error { message: errstr }
-    }
-}
-
-impl From<TryRecvError> for Error {
-    fn from(error: TryRecvError) -> Self {
-        let errstr = error.to_string();
-        Error { message: errstr }
-    }
-}
-
-impl From<nix::Error> for Error {
-    fn from(error: nix::Error) -> Self {
         let errstr = error.to_string();
         Error { message: errstr }
     }
