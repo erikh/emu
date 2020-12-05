@@ -19,3 +19,6 @@ rtnetlink = "0.6.0"
 async-trait = "0.1"
 futures-channel = ">=0"
 futures = ">=0"
+qapi = { version = "0.6", features = ["qmp", "tokio"] }
+qapi-qmp = ">=0"
+serde_json = ">=0"

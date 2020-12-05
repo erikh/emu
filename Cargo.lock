@@ -57,6 +57,15 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "base64"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b25d992356d2eb0ed82172f5248873db5560c4721f564b13cb5193bda5e668e"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
+name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
@@ -181,8 +190,11 @@ dependencies = [
  "libc",
  "network_bridge",
  "nix",
+ "qapi",
+ "qapi-qmp",
  "rtnetlink",
  "serde",
+ "serde_json",
  "tinytemplate",
  "tokio",
 ]
@@ -616,6 +628,61 @@ dependencies = [
 ]
 
 [[package]]
+name = "qapi"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5f57f959f2629854084fbc15000e8cec0eda60a48c1be75b90ece88f92746b7"
+dependencies = [
+ "log",
+ "qapi-qmp",
+ "qapi-spec",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "qapi-codegen"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81b4abbe2a6fbc026bf9bb9021d181d8da4661c6a3cf9a221f6a36aca2617acd"
+dependencies = [
+ "qapi-parser",
+]
+
+[[package]]
+name = "qapi-parser"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2ee46393e919bb03d7ef4c3d633dbbf7d7196fb02b9928ea9fccae7529db07c"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "qapi-qmp"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3457622abb924942b0c6f93ddff38faf1ec31d2eaf0a005141b076ce27008f37"
+dependencies = [
+ "qapi-codegen",
+ "qapi-spec",
+ "serde",
+]
+
+[[package]]
+name = "qapi-spec"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "333fbc0158fc03b2ef126d6eed878517e14db695cdead4665ea24a4f7ee143e2"
+dependencies = [
+ "base64 0.10.1",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -661,7 +728,7 @@ version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b18820d944b33caa75a71378964ac46f58517c92b6ae5f762636247c09e78fb"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "blake2b_simd",
  "constant_time_eq",
  "crossbeam-utils",

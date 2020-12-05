@@ -136,6 +136,16 @@ fn reload_systemd() -> Result<(), Error> {
     }
 }
 
+fn shutdown(vm_name: &str) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+    if !dsh.valid_filename(vm_name) {
+        return Err(Error::new("invalid VM name"));
+    }
+
+    let launcher = QemuLauncher::default();
+    launcher.shutdown_vm(vm_name, dsh)
+}
+
 fn run(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
     if !dsh.valid_filename(vm_name) {
@@ -229,6 +239,10 @@ impl Commands {
                 (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image")
                 (@arg NAME: +required "Name of VM")
             )
+            (@subcommand shutdown =>
+                (about: "Just run a pre-created VM; no systemd involved")
+                (@arg NAME: +required "Name of VM")
+            )
             (@subcommand list =>
                 (about: "Yield a list of VMs, one on each line")
             )
@@ -282,6 +296,9 @@ impl Commands {
                 run(vm_name, args.value_of("cdrom"))?
             }),
             "list" => list(),
+            "shutdown" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                shutdown(vm_name)?
+            }),
             "supervised" => supervised(),
             "clone" => Ok(if let Some(from) = args.value_of("FROM") {
                 if let Some(to) = args.value_of("TO") {

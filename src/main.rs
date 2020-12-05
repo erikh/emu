@@ -3,6 +3,7 @@ mod error;
 mod image;
 mod launcher;
 mod network;
+mod qmp;
 mod storage;
 mod template;
 

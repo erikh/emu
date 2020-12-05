@@ -43,13 +43,7 @@ impl StorageHandler for DirectoryStorageHandler {
 
     fn create_monitor(&self, vm_name: &str) -> Result<(), Error> {
         match self.monitor_path(vm_name) {
-            Ok(path) => {
-                let monitor = std::ffi::CString::new(path).unwrap();
-                unsafe {
-                    libc::mkfifo(monitor.as_ptr(), libc::S_IRUSR | libc::S_IWUSR);
-                };
-                Ok(())
-            }
+            Ok(_) => Ok(()),
             Err(e) => return Err(e),
         }
     }

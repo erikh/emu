@@ -14,6 +14,20 @@ impl Error {
     }
 }
 
+impl From<serde_json::Error> for Error {
+    fn from(error: serde_json::Error) -> Self {
+        let errstr = error.to_string();
+        Error { message: errstr }
+    }
+}
+
+impl From<qapi::ExecuteError> for Error {
+    fn from(error: qapi::ExecuteError) -> Self {
+        let errstr = error.to_string();
+        Error { message: errstr }
+    }
+}
+
 impl From<clap::Error> for Error {
     fn from(error: clap::Error) -> Self {
         let errstr = error.to_string();

@@ -1,6 +1,9 @@
 use crate::error::Error;
 use crate::image::QEMU_IMG_NAME;
+use crate::qmp::{Client, UnixSocket};
 use crate::storage::{DirectoryStorageHandler, StorageHandler};
+use std::io::prelude::*;
+use std::os::unix::net::UnixStream;
 use std::process::{Child, Command, Stdio};
 
 pub enum Architecture {
@@ -14,6 +17,8 @@ pub trait EmulatorLauncher {
         cdrom: Option<&str>,
         sh: DirectoryStorageHandler,
     ) -> Result<Child, Error>;
+
+    fn shutdown_vm(&self, name: &str, sh: DirectoryStorageHandler) -> Result<(), Error>;
 
     fn emulator_path(&self) -> String;
     fn emulator_cpu(&self) -> String;
@@ -69,6 +74,15 @@ impl QemuLauncher {
 }
 
 impl EmulatorLauncher for QemuLauncher {
+    fn shutdown_vm(&self, name: &str, sh: DirectoryStorageHandler) -> Result<(), Error> {
+        let stream = UnixStream::connect(sh.monitor_path(name)?)?;
+        let mut us = UnixSocket::new(stream)?;
+        us.handshake()?;
+        us.send_command("qmp_capabilities", None)?;
+        us.send_command("system_powerdown", None)?;
+        Ok(())
+    }
+
     fn launch_vm(
         &self,
         name: &str,
@@ -117,7 +131,7 @@ impl EmulatorLauncher for QemuLauncher {
                 let mut v = vec![
                     String::from("-nodefaults"),
                     String::from("-chardev"),
-                    format!("pipe,id=char0,path={}", mon),
+                    format!("socket,server,nowait,id=char0,path={}", mon),
                     String::from("-mon"),
                     String::from("chardev=char0,mode=control,pretty=on"),
                     String::from("-machine"),
