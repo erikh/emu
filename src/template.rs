@@ -6,13 +6,19 @@ use std::path::PathBuf;
 use tinytemplate::TinyTemplate;
 
 const SYSTEMD_USER_DIR: &str = "systemd/user";
+const EMU_DEFAULT_PATH: &str = "/bin/emu";
 
 const SYSTEMD_UNIT: &str = "
 [Unit]
 Description=Virtual Machine: {vm_name}
 
 [Service]
+Type=simple
 ExecStart={command} {{for value in args}}{value} {{ endfor }}
+TimeoutStopSec=30
+ExecStop={emu_path} shutdown {vm_name}
+KillSignal=SIGCONT
+FinalKillSignal=SIGKILL
 
 [Install]
 WantedBy=default.target
@@ -23,6 +29,7 @@ pub struct Data {
     vm_name: String,
     command: String,
     args: Vec<String>,
+    emu_path: String,
 }
 
 impl Data {
@@ -31,6 +38,13 @@ impl Data {
             vm_name,
             command,
             args,
+            emu_path: match std::env::current_exe() {
+                Ok(path) => match path.to_str() {
+                    Some(path) => String::from(path),
+                    None => String::from(EMU_DEFAULT_PATH),
+                },
+                Err(_) => String::from(EMU_DEFAULT_PATH),
+            },
         }
     }
 }
