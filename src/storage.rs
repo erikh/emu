@@ -2,6 +2,68 @@ use crate::error::Error;
 use std::fmt;
 use std::path::PathBuf;
 
+const SYSTEMD_USER_DIR: &str = "systemd/user";
+
+#[derive(Debug, Clone)]
+pub struct SystemdStorage {
+    basedir: PathBuf,
+    storage: DirectoryStorageHandler,
+}
+
+impl Default for SystemdStorage {
+    fn default() -> Self {
+        Self::new(dirs::config_dir().unwrap())
+    }
+}
+
+impl SystemdStorage {
+    pub fn new(path: PathBuf) -> Self {
+        let s = path.join(SYSTEMD_USER_DIR);
+        Self {
+            basedir: s,
+            storage: DirectoryStorageHandler::default(),
+        }
+    }
+
+    pub fn init(&self) -> Result<(), Error> {
+        Ok(std::fs::create_dir_all(&self.basedir)?)
+    }
+
+    pub fn service_filename(&self, vm_name: &str) -> Result<String, Error> {
+        if !self.storage.valid_filename(vm_name) {
+            return Err(Error::new("invalid vm name"));
+        }
+
+        let path = self.basedir.join(format!("{}.emu.service", vm_name));
+        Ok(String::from(path.to_str().unwrap()))
+    }
+
+    pub fn remove(&self, vm_name: &str) -> Result<(), Error> {
+        let path = self.service_filename(vm_name)?;
+
+        match std::fs::remove_file(path) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(Error::from(e)),
+        }
+    }
+
+    pub fn list(&self) -> Result<Vec<String>, Error> {
+        let mut v: Vec<String> = Vec::new();
+        for item in std::fs::read_dir(&self.basedir)? {
+            match item {
+                Ok(item) => {
+                    let filename = String::from(item.file_name().to_str().unwrap());
+                    if filename.ends_with(".emu.service") {
+                        v.push(filename.replace(".emu.service", ""))
+                    }
+                }
+                Err(_) => {}
+            }
+        }
+        Ok(v)
+    }
+}
+
 pub trait StorageHandler: fmt::Debug {
     fn base_path(&self) -> String;
     fn vm_root(&self, name: &str) -> Result<String, Error>;

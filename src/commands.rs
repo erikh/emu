@@ -1,12 +1,12 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use crate::error::Error;
 use crate::image::{Imager, QEmuImager};
 use crate::launcher::{EmulatorLauncher, QemuLauncher};
 use crate::network::{BridgeManager, NetworkManager};
 use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use crate::template::Systemd;
+use crate::{error::Error, storage::SystemdStorage};
 
 fn list() -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
@@ -22,11 +22,8 @@ fn list() -> Result<(), Error> {
 }
 
 fn supervised() -> Result<(), Error> {
-    let dsh = DirectoryStorageHandler::default();
-
-    let launcher = QemuLauncher::default();
-    let t = Systemd::new(Box::new(launcher), dsh);
-    match t.list() {
+    let s = SystemdStorage::default();
+    match s.list() {
         Ok(list) => {
             for vm in list {
                 println!("{}", vm)
@@ -95,8 +92,11 @@ fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
         return Err(Error::new("vm doesn't exist"));
     }
 
+    let ss = SystemdStorage::default();
+    ss.init()?;
+
     let launcher = QemuLauncher::default();
-    let t = Systemd::new(Box::new(launcher), dsh);
+    let t = Systemd::new(Box::new(launcher), dsh, ss);
     if let Err(e) = t.write(vm_name, cdrom) {
         return Err(e);
     }
@@ -111,9 +111,8 @@ fn unsupervise(vm_name: &str) -> Result<(), Error> {
         return Err(Error::new("invalid VM name"));
     }
 
-    let launcher = QemuLauncher::default();
-    let t = Systemd::new(Box::new(launcher), dsh);
-    t.remove(vm_name)?;
+    let s = SystemdStorage::default();
+    s.remove(vm_name)?;
 
     reload_systemd()
 }
