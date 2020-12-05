@@ -2,7 +2,6 @@ use crate::error::Error;
 use crate::image::QEMU_IMG_NAME;
 use crate::qmp::{Client, UnixSocket};
 use crate::storage::{DirectoryStorageHandler, StorageHandler};
-use std::io::prelude::*;
 use std::os::unix::net::UnixStream;
 use std::process::{Child, Command, Stdio};
 
