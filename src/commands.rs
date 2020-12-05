@@ -240,7 +240,7 @@ impl Commands {
                 (@arg NAME: +required "Name of VM")
             )
             (@subcommand shutdown =>
-                (about: "Just run a pre-created VM; no systemd involved")
+                (about: "Gracefully shutdown a pre-created VM.")
                 (@arg NAME: +required "Name of VM")
             )
             (@subcommand list =>
