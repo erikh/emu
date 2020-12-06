@@ -91,7 +91,7 @@ impl EmulatorLauncher for QemuLauncher {
 
     fn emulator_cpu(&self) -> String {
         match self.arch {
-            Architecture::X86_64 => return String::from("kvm64"),
+            Architecture::X86_64 => return String::from("host"),
         }
     }
 
@@ -118,7 +118,7 @@ impl EmulatorLauncher for QemuLauncher {
                     String::from("-display"),
                     String::from("gtk"),
                     String::from("-vga"),
-                    String::from("virtio"),
+                    config.vga,
                     String::from("-m"),
                     format!("{}M", config.memory),
                     String::from("-cpu"),
