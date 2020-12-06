@@ -1,3 +1,4 @@
+use crate::config::Configuration;
 use crate::error::Error;
 use crate::image::QEMU_IMG_NAME;
 use crate::qmp::{Client, UnixSocket};
@@ -30,11 +31,6 @@ pub trait EmulatorLauncher {
     ) -> Result<Vec<String>, Error>;
 }
 
-pub struct Configuration {
-    pub memory: u32, // megabytes
-    pub cpus: u32,
-}
-
 pub struct QemuLauncher {
     arch: Architecture,
     config: Configuration,
@@ -43,22 +39,6 @@ pub struct QemuLauncher {
 impl Default for QemuLauncher {
     fn default() -> Self {
         Self::new(Architecture::X86_64, Configuration::default())
-    }
-}
-
-impl Default for Configuration {
-    fn default() -> Self {
-        Configuration {
-            memory: 16384,
-            cpus: 8,
-        }
-    }
-}
-
-impl Configuration {
-    pub fn valid(&self) -> Result<(), Error> {
-        // FIXME fill this in later
-        Ok(())
     }
 }
 
