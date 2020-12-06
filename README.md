@@ -8,6 +8,12 @@
   - by use of a INI configuration file
 - clone (stopped) vm images
 
+## Requirements
+
+The non-systemd parts probably would work on a mac with few changes. Until then
+this is linux-only. You will also need to be a part of your system's `kvm`
+group.
+
 ## Stability
 
 Since emu is a really new project I'll keep this brief: do not depend on this
