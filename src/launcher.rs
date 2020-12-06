@@ -1,4 +1,3 @@
-use crate::config::Configuration;
 use crate::error::Error;
 use crate::image::QEMU_IMG_NAME;
 use crate::qmp::{Client, UnixSocket};
@@ -33,22 +32,22 @@ pub trait EmulatorLauncher {
 
 pub struct QemuLauncher {
     arch: Architecture,
-    config: Configuration,
+    dsh: DirectoryStorageHandler,
 }
 
 impl Default for QemuLauncher {
     fn default() -> Self {
-        Self::new(Architecture::X86_64, Configuration::default())
+        Self::new(Architecture::X86_64, DirectoryStorageHandler::default())
     }
 }
 
 impl QemuLauncher {
-    pub fn new(arch: Architecture, config: Configuration) -> Self {
-        QemuLauncher { arch, config }
+    pub fn new(arch: Architecture, dsh: DirectoryStorageHandler) -> Self {
+        QemuLauncher { arch, dsh }
     }
 
-    pub fn valid(&self) -> Result<(), Error> {
-        self.config.valid()
+    pub fn valid(&self, vm_name: &str) -> Result<(), Error> {
+        self.dsh.config(vm_name)?.valid()
     }
 }
 
@@ -102,10 +101,11 @@ impl EmulatorLauncher for QemuLauncher {
         cdrom: Option<&str>,
         sh: DirectoryStorageHandler,
     ) -> Result<Vec<String>, Error> {
-        if self.valid().is_ok() {
+        if self.valid(vm_name).is_ok() {
             if sh.vm_path_exists(vm_name, QEMU_IMG_NAME) {
                 let img_path = sh.vm_path(vm_name, QEMU_IMG_NAME)?;
                 let mon = sh.monitor_path(vm_name).unwrap();
+                let config = self.dsh.config(vm_name)?;
 
                 let mut v = vec![
                     String::from("-nodefaults"),
@@ -120,14 +120,11 @@ impl EmulatorLauncher for QemuLauncher {
                     String::from("-vga"),
                     String::from("virtio"),
                     String::from("-m"),
-                    format!("{}M", self.config.memory),
+                    format!("{}M", config.memory),
                     String::from("-cpu"),
                     self.emulator_cpu(),
                     String::from("-smp"),
-                    format!(
-                        "cpus=1,cores={},maxcpus={}",
-                        self.config.cpus, self.config.cpus,
-                    ),
+                    format!("cpus=1,cores={},maxcpus={}", config.cpus, config.cpus,),
                     String::from("-drive"),
                     format!(
                         "driver=qcow2,if=virtio,file={},cache=none,media=disk",
@@ -156,7 +153,7 @@ impl EmulatorLauncher for QemuLauncher {
         } else {
             Err(Error::new(&format!(
                 "vm configuration is invalid: {:?}",
-                self.valid(),
+                self.valid(vm_name),
             )))
         }
     }

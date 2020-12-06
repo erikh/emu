@@ -1,3 +1,4 @@
+use crate::config::Configuration;
 use crate::error::Error;
 use std::fmt;
 use std::path::PathBuf;
@@ -68,6 +69,7 @@ pub trait StorageHandler: fmt::Debug {
     fn base_path(&self) -> String;
     fn vm_root(&self, name: &str) -> Result<String, Error>;
     fn monitor_path(&self, vm_name: &str) -> Result<String, Error>;
+    fn config(&self, vm_name: &str) -> Result<Configuration, Error>;
     fn vm_exists(&self, name: &str) -> bool;
     fn vm_list(&self) -> Result<Vec<String>, Error>;
     fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error>;
@@ -126,6 +128,17 @@ impl StorageHandler for DirectoryStorageHandler {
             Ok(String::from(path))
         } else {
             Err(Error::new("could not calculate monitor path"))
+        }
+    }
+
+    fn config(&self, vm_name: &str) -> Result<Configuration, Error> {
+        if let Some(path) = PathBuf::from(self.vm_root(vm_name)?)
+            .join("config")
+            .to_str()
+        {
+            Ok(Configuration::from_file(path))
+        } else {
+            Ok(Configuration::default())
         }
     }
 
