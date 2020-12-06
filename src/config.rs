@@ -7,10 +7,13 @@ const DEFAULT_CPUS: u32 = 8;
 const DEFAULT_MEMORY: u32 = 16384;
 const DEFAULT_VGA: &str = "virtio";
 
+pub type PortMap = HashMap<u16, u16>;
+
 pub struct Configuration {
     pub memory: u32, // megabytes
     pub cpus: u32,
     pub vga: String,
+    pub ports: PortMap,
 }
 
 impl Default for Configuration {
@@ -19,6 +22,7 @@ impl Default for Configuration {
             memory: DEFAULT_MEMORY,
             cpus: DEFAULT_CPUS,
             vga: String::from(DEFAULT_VGA),
+            ports: HashMap::new(),
         }
     }
 }
@@ -38,6 +42,21 @@ fn exists_or_default(
     }
 
     ini[section][key].clone().unwrap()
+}
+
+fn get_ports(ini: &HashMap<String, HashMap<String, Option<String>>>) -> PortMap {
+    let mut pm = PortMap::new();
+
+    if ini.contains_key("ports") {
+        for (k, v) in ini["ports"].iter() {
+            pm.insert(
+                k.parse::<u16>().unwrap(),
+                v.clone().unwrap().parse::<u16>().unwrap(),
+            );
+        }
+    }
+
+    pm
 }
 
 impl Configuration {
@@ -63,6 +82,7 @@ impl Configuration {
             ))
             .unwrap(),
             vga: exists_or_default(&ini, "machine", "vga", DEFAULT_VGA),
+            ports: get_ports(&ini),
         }
     }
 
@@ -75,6 +95,10 @@ impl Configuration {
             return Err(Error::new("No cpus value set"));
         }
 
+        Ok(())
+    }
+
+    pub fn check_ports(&self) -> Result<(), Error> {
         Ok(())
     }
 }

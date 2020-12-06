@@ -49,6 +49,17 @@ impl QemuLauncher {
     pub fn valid(&self, vm_name: &str) -> Result<(), Error> {
         self.dsh.config(vm_name)?.valid()
     }
+
+    fn hostfwd_rules(&self, vm_name: &str) -> Result<String, Error> {
+        let config = self.dsh.config(vm_name)?;
+        config.check_ports()?;
+        let mut res = String::new();
+        for (host, guest) in config.ports {
+            res += &format!(",hostfwd=tcp:127.0.0.1:{}-:{}", host, guest);
+        }
+
+        Ok(res)
+    }
 }
 
 impl EmulatorLauncher for QemuLauncher {
@@ -131,7 +142,7 @@ impl EmulatorLauncher for QemuLauncher {
                         img_path
                     ),
                     String::from("-nic"),
-                    String::from("user"),
+                    format!("user{}", self.hostfwd_rules(vm_name)?),
                 ];
 
                 if let Some(cd) = cdrom {
