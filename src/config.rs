@@ -42,7 +42,11 @@ fn exists_or_default(
 
 impl Configuration {
     pub fn from_file(filename: &str) -> Self {
-        let ini = ini!(filename);
+        let ini = match ini!(safe filename) {
+            Ok(ini) => ini,
+            Err(_) => return Configuration::default(),
+        };
+
         Self {
             memory: to_u32(exists_or_default(
                 &ini,
