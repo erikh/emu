@@ -147,14 +147,20 @@ fn shutdown(vm_name: &str) -> Result<(), Error> {
     launcher.shutdown_vm(vm_name, dsh)
 }
 
-fn run(vm_name: &str, cdrom: Option<&str>, detach: bool, headless: bool) -> Result<(), Error> {
+fn run(
+    vm_name: &str,
+    cdrom: Option<&str>,
+    extra_disk: Option<&str>,
+    detach: bool,
+    headless: bool,
+) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
     if !dsh.valid_filename(vm_name) {
         return Err(Error::new("invalid VM name"));
     }
 
     let launcher = QemuLauncher::default();
-    let mut child = launcher.launch_vm(vm_name, cdrom, detach, headless, dsh)?;
+    let mut child = launcher.launch_vm(vm_name, cdrom, extra_disk, detach, headless, dsh)?;
 
     if !detach {
         let exit = child.wait();
@@ -271,6 +277,7 @@ impl Commands {
                 (@arg headless: -e --headless "Run without a video window")
                 (@arg detach: -d --detach "Do not wait for qemu to exit")
                 (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image")
+                (@arg extra_disk: --extra +takes_value "Supply an extra ISO image (useful for windows installations)")
                 (@arg NAME: +required "Name of VM")
             )
             (@subcommand shutdown =>
@@ -411,6 +418,7 @@ impl Commands {
                 run(
                     vm_name,
                     args.value_of("cdrom"),
+                    args.value_of("extra_disk"),
                     args.is_present("detach"),
                     args.is_present("headless"),
                 )?

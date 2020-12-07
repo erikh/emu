@@ -71,7 +71,7 @@ impl Systemd {
         t.add_template("systemd", SYSTEMD_UNIT)?;
         let args = self
             .launcher
-            .emulator_args(vm_name, cdrom, true, self.storage.clone())?;
+            .emulator_args(vm_name, cdrom, None, true, self.storage.clone())?;
 
         let data = Data::new(String::from(vm_name), self.launcher.emulator_path(), args);
         match t.render("systemd", &data) {

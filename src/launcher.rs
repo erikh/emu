@@ -15,6 +15,7 @@ pub trait EmulatorLauncher {
         &self,
         name: &str,
         cdrom: Option<&str>,
+        extra_disk: Option<&str>,
         detach: bool,
         headless: bool,
         sh: DirectoryStorageHandler,
@@ -29,6 +30,7 @@ pub trait EmulatorLauncher {
         &self,
         vm_name: &str,
         cdrom: Option<&str>,
+        extra_disk: Option<&str>,
         headless: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Vec<String>, Error>;
@@ -80,11 +82,12 @@ impl EmulatorLauncher for QemuLauncher {
         &self,
         name: &str,
         cdrom: Option<&str>,
+        extra_disk: Option<&str>,
         detach: bool,
         headless: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Child, Error> {
-        match self.emulator_args(name, cdrom, headless, sh) {
+        match self.emulator_args(name, cdrom, extra_disk, headless, sh) {
             Ok(args) => {
                 let mut cmd = Command::new(self.emulator_path());
 
@@ -126,6 +129,7 @@ impl EmulatorLauncher for QemuLauncher {
         &self,
         vm_name: &str,
         cdrom: Option<&str>,
+        extra_disk: Option<&str>,
         headless: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Vec<String>, Error> {
@@ -172,6 +176,18 @@ impl EmulatorLauncher for QemuLauncher {
                         Ok(_) => {
                             v.push(String::from("-cdrom"));
                             v.push(String::from(cd));
+                        }
+                        Err(e) => {
+                            return Err(Error::new(&format!("error locating cdrom file: {}", e)))
+                        }
+                    }
+                }
+
+                if let Some(cd) = extra_disk {
+                    match std::fs::metadata(cd) {
+                        Ok(_) => {
+                            v.push(String::from("-drive"));
+                            v.push(format!("file={},media=cdrom", cd));
                         }
                         Err(e) => {
                             return Err(Error::new(&format!("error locating cdrom file: {}", e)))
