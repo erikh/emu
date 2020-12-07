@@ -8,6 +8,7 @@ use std::io::Write;
 const DEFAULT_CPUS: u32 = 8;
 const DEFAULT_MEMORY: u32 = 16384;
 const DEFAULT_VGA: &str = "virtio";
+const DEFAULT_IMAGE_INTERFACE: &str = "virtio";
 
 pub type PortMap = HashMap<u16, u16>;
 
@@ -16,6 +17,7 @@ pub struct Configuration {
     pub cpus: u32,
     pub vga: String,
     pub ports: PortMap,
+    pub image_interface: String,
 }
 
 impl Default for Configuration {
@@ -25,6 +27,7 @@ impl Default for Configuration {
             cpus: DEFAULT_CPUS,
             vga: String::from(DEFAULT_VGA),
             ports: HashMap::new(),
+            image_interface: String::from(DEFAULT_IMAGE_INTERFACE),
         }
     }
 }
@@ -84,6 +87,12 @@ impl Configuration {
             ))
             .unwrap(),
             vga: exists_or_default(&ini, "machine", "vga", DEFAULT_VGA),
+            image_interface: exists_or_default(
+                &ini,
+                "machine",
+                "image-interface",
+                DEFAULT_IMAGE_INTERFACE,
+            ),
             ports: get_ports(&ini),
         }
     }
@@ -107,6 +116,10 @@ impl Configuration {
         machine.insert(String::from("memory"), Some(self.memory.to_string()));
         machine.insert(String::from("cpus"), Some(self.cpus.to_string()));
         machine.insert(String::from("vga"), Some(self.vga.clone()));
+        machine.insert(
+            String::from("image-interface"),
+            Some(self.image_interface.clone()),
+        );
         ini.insert(String::from("machine"), machine);
 
         for (host, guest) in self.ports.clone() {
@@ -154,6 +167,10 @@ impl Configuration {
             }
             "vga" => {
                 self.vga = String::from(value);
+                Ok(())
+            }
+            "image-interface" => {
+                self.image_interface = String::from(value);
                 Ok(())
             }
             _ => Err(Error::new("key does not exist")),

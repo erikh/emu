@@ -153,8 +153,8 @@ impl EmulatorLauncher for QemuLauncher {
                     format!("cpus=1,cores={},maxcpus={}", config.cpus, config.cpus,),
                     String::from("-drive"),
                     format!(
-                        "driver=qcow2,if=virtio,file={},cache=none,media=disk",
-                        img_path
+                        "driver=qcow2,if={},file={},cache=none,media=disk",
+                        config.image_interface, img_path
                     ),
                     String::from("-nic"),
                     format!("user{}", self.hostfwd_rules(vm_name)?),
