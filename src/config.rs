@@ -141,4 +141,22 @@ impl Configuration {
     pub fn unmap_port(&mut self, hostport: u16) {
         self.ports.remove(&hostport);
     }
+
+    pub fn set_machine_value(&mut self, key: &str, value: &str) -> Result<(), Error> {
+        match key {
+            "memory" => {
+                self.memory = to_u32(String::from(value))?;
+                Ok(())
+            }
+            "cpus" => {
+                self.cpus = to_u32(String::from(value))?;
+                Ok(())
+            }
+            "vga" => {
+                self.vga = String::from(value);
+                Ok(())
+            }
+            _ => Err(Error::new("key does not exist")),
+        }
+    }
 }

@@ -199,6 +199,13 @@ fn show_config(vm_name: &str) -> Result<(), Error> {
     Ok(())
 }
 
+fn config_set(vm_name: &str, key: &str, value: &str) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+    let mut config = dsh.config(vm_name)?;
+    config.set_machine_value(key, value)?;
+    dsh.write_config(vm_name, config)
+}
+
 fn port_map(vm_name: &str, hostport: u16, guestport: u16) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
     let mut config = dsh.config(vm_name)?;
@@ -281,6 +288,12 @@ impl Commands {
                     (about: "Show the written+inferred configuration for a VM")
                     (@arg NAME: +required "Name of VM")
                 )
+                (@subcommand set =>
+                    (about: "Set a value in the configuration; type-safe")
+                    (@arg NAME: +required "Name of VM")
+                    (@arg KEY: +required "Name of key to set")
+                    (@arg VALUE: +required "Value of key to set")
+                )
                 (@subcommand port =>
                     (about: "Adjust port mappings")
 
@@ -314,6 +327,11 @@ impl Commands {
         match cmd {
             "show" => Ok(if let Some(vm_name) = args.value_of("NAME") {
                 show_config(vm_name)?
+            }),
+            "set" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                let key = args.value_of("KEY").unwrap();
+                let value = args.value_of("VALUE").unwrap();
+                config_set(vm_name, key, value)?
             }),
             "port" => {
                 let (cmd, args) = args.subcommand();
