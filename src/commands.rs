@@ -4,7 +4,9 @@ use std::process::{Command, Stdio};
 use clap::ArgMatches;
 
 use crate::image::{Imager, QEmuImager};
-use crate::launcher::{EmulatorLauncher, QemuLauncher};
+use crate::launcher::emulators::qemu;
+use crate::launcher::emulators::qemu::linux;
+use crate::launcher::*;
 use crate::network::{BridgeManager, NetworkManager};
 use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use crate::template::Systemd;
@@ -97,9 +99,19 @@ fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     let ss = SystemdStorage::default();
     ss.init()?;
 
-    let launcher = QemuLauncher::default();
-    let t = Systemd::new(Box::new(launcher), dsh, ss);
-    if let Err(e) = t.write(vm_name, cdrom) {
+    let emu = linux::Emulator {};
+    let rc = RuntimeConfig {
+        cdrom: match cdrom {
+            Some(x) => Some(String::from(x)),
+            None => None,
+        },
+        dsh,
+        extra_disk: None,
+        headless: true,
+    };
+
+    let t = Systemd::new(Box::new(emu), ss);
+    if let Err(e) = t.write(vm_name, &rc) {
         return Err(e);
     }
 
@@ -143,8 +155,8 @@ fn shutdown(vm_name: &str) -> Result<(), Error> {
         return Err(Error::new("invalid VM name"));
     }
 
-    let launcher = QemuLauncher::default();
-    launcher.shutdown_vm(vm_name, dsh)
+    let controller = qemu::EmulatorController::new(dsh);
+    controller.shutdown(vm_name)
 }
 
 fn run(
@@ -159,23 +171,32 @@ fn run(
         return Err(Error::new("invalid VM name"));
     }
 
-    let launcher = QemuLauncher::default();
-    let mut child = launcher.launch_vm(vm_name, cdrom, extra_disk, detach, headless, dsh)?;
+    let emu = linux::Emulator {};
+    let rc = RuntimeConfig {
+        cdrom: match cdrom {
+            Some(x) => Some(String::from(x)),
+            None => None,
+        },
+        extra_disk: match extra_disk {
+            Some(x) => Some(String::from(x)),
+            None => None,
+        },
+        headless,
+        dsh,
+    };
 
-    if !detach {
-        let exit = child.wait();
-        match exit {
-            Ok(es) => {
-                if es.success() {
-                    Ok(())
-                } else {
-                    Err(Error::new(&format!("qemu exited uncleanly: {}", es)))
-                }
+    let launcher = Launcher::new(Box::new(emu), rc);
+    let result = launcher.launch(vm_name, detach)?;
+
+    match result {
+        Some(es) => {
+            if es.success() {
+                Ok(())
+            } else {
+                Err(Error::new(&format!("qemu exited uncleanly: {}", es)))
             }
-            Err(e) => Err(Error::from(e)),
         }
-    } else {
-        Ok(())
+        None => Ok(()),
     }
 }
 

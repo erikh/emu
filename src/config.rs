@@ -5,6 +5,7 @@ use crate::ini_writer::*;
 use ini::ini;
 use std::io::Write;
 
+const DEFAULT_CPU_TYPE: &str = "host";
 const DEFAULT_CPUS: u32 = 8;
 const DEFAULT_MEMORY: u32 = 16384;
 const DEFAULT_VGA: &str = "virtio";
@@ -15,6 +16,7 @@ pub type PortMap = HashMap<u16, u16>;
 pub struct Configuration {
     pub memory: u32, // megabytes
     pub cpus: u32,
+    pub cpu_type: String,
     pub vga: String,
     pub ports: PortMap,
     pub image_interface: String,
@@ -25,6 +27,7 @@ impl Default for Configuration {
         Configuration {
             memory: DEFAULT_MEMORY,
             cpus: DEFAULT_CPUS,
+            cpu_type: String::from(DEFAULT_CPU_TYPE),
             vga: String::from(DEFAULT_VGA),
             ports: HashMap::new(),
             image_interface: String::from(DEFAULT_IMAGE_INTERFACE),
@@ -72,6 +75,7 @@ impl Configuration {
         };
 
         Self {
+            cpu_type: exists_or_default(&ini, "machine", "cpu-type", DEFAULT_CPU_TYPE),
             memory: to_u32(exists_or_default(
                 &ini,
                 "machine",
@@ -120,6 +124,7 @@ impl Configuration {
             String::from("image-interface"),
             Some(self.image_interface.clone()),
         );
+        machine.insert(String::from("cpu-type"), Some(self.cpu_type.clone()));
         ini.insert(String::from("machine"), machine);
 
         for (host, guest) in self.ports.clone() {
@@ -171,6 +176,10 @@ impl Configuration {
             }
             "image-interface" => {
                 self.image_interface = String::from(value);
+                Ok(())
+            }
+            "cpu-type" => {
+                self.cpu_type = String::from(value);
                 Ok(())
             }
             _ => Err(Error::new("key does not exist")),
