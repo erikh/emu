@@ -281,16 +281,20 @@ impl Commands {
                     (about: "Show the written+inferred configuration for a VM")
                     (@arg NAME: +required "Name of VM")
                 )
-                (@subcommand portmap =>
-                    (about: "Adjust port mappings:")
-                    (@arg NAME: +required "Name of VM")
-                    (@arg HOSTPORT: +required "Port on localhost to map to guest")
-                    (@arg GUESTPORT: +required "Port on guest to expose")
-                )
-                (@subcommand portunmap =>
-                    (about: "Adjust port mappings:")
-                    (@arg NAME: +required "Name of VM")
-                    (@arg HOSTPORT: +required "Port on localhost to map to guest")
+                (@subcommand port =>
+                    (about: "Adjust port mappings")
+
+                    (@subcommand map =>
+                        (about: "Add a port mapping from host -> guest")
+                        (@arg NAME: +required "Name of VM")
+                        (@arg HOSTPORT: +required "Port on localhost to map to guest")
+                        (@arg GUESTPORT: +required "Port on guest to expose")
+                    )
+                    (@subcommand unmap =>
+                        (about: "Undo a port mapping")
+                        (@arg NAME: +required "Name of VM")
+                        (@arg HOSTPORT: +required "Port on localhost to map to guest")
+                    )
                 )
             )
             // (@subcommand network_test =>
@@ -311,26 +315,38 @@ impl Commands {
             "show" => Ok(if let Some(vm_name) = args.value_of("NAME") {
                 show_config(vm_name)?
             }),
-            "portmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                let hostport = args.value_of("HOSTPORT").unwrap_or("");
-                match hostport.parse::<u16>() {
-                    Ok(hostport) => {
-                        let guestport = args.value_of("GUESTPORT").unwrap_or("");
-                        match guestport.parse::<u16>() {
-                            Ok(guestport) => port_map(vm_name, hostport, guestport)?,
+            "port" => {
+                let (cmd, args) = args.subcommand();
+                let am = ArgMatches::new();
+                let args = match args {
+                    Some(args) => args,
+                    None => &am,
+                };
+
+                match cmd {
+                    "map" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
+                        match hostport.parse::<u16>() {
+                            Ok(hostport) => {
+                                let guestport = args.value_of("GUESTPORT").unwrap_or("");
+                                match guestport.parse::<u16>() {
+                                    Ok(guestport) => port_map(vm_name, hostport, guestport)?,
+                                    Err(e) => return Err(Error::from(e)),
+                                }
+                            }
                             Err(e) => return Err(Error::from(e)),
                         }
-                    }
-                    Err(e) => return Err(Error::from(e)),
+                    }),
+                    "unmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
+                        match hostport.parse::<u16>() {
+                            Ok(hostport) => port_unmap(vm_name, hostport)?,
+                            Err(e) => return Err(Error::from(e)),
+                        }
+                    }),
+                    _ => Ok(()),
                 }
-            }),
-            "portunmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                let hostport = args.value_of("HOSTPORT").unwrap_or("");
-                match hostport.parse::<u16>() {
-                    Ok(hostport) => port_unmap(vm_name, hostport)?,
-                    Err(e) => return Err(Error::from(e)),
-                }
-            }),
+            }
             _ => Ok(()),
         }
     }
