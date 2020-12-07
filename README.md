@@ -73,6 +73,23 @@ memory = 512 # megabytes
 2222 = 22 # host -> guest map
 ```
 
+You can control these values with `emu config <subcommand>` sub-commands.
+
+```bash
+$ emu config show myvm
+[machine]
+cpus = 4
+memory = 512
+
+[ports]
+2222 = 22
+
+$ emu config port map myvm 2223 23
+$ emu config port unmap myvm 2223
+
+$ emu config set myvm cpus 8
+```
+
 ## Author
 
 Erik Hollensbe <github@hollensbe.org>
