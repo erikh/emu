@@ -137,4 +137,8 @@ impl Configuration {
     pub fn map_port(&mut self, hostport: u16, guestport: u16) {
         self.ports.insert(hostport, guestport);
     }
+
+    pub fn unmap_port(&mut self, hostport: u16) {
+        self.ports.remove(&hostport);
+    }
 }

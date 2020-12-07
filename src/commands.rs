@@ -199,10 +199,17 @@ fn show_config(vm_name: &str) -> Result<(), Error> {
     Ok(())
 }
 
-fn portmap(vm_name: &str, hostport: u16, guestport: u16) -> Result<(), Error> {
+fn port_map(vm_name: &str, hostport: u16, guestport: u16) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
     let mut config = dsh.config(vm_name)?;
     config.map_port(hostport, guestport);
+    dsh.write_config(vm_name, config)
+}
+
+fn port_unmap(vm_name: &str, hostport: u16) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+    let mut config = dsh.config(vm_name)?;
+    config.unmap_port(hostport);
     dsh.write_config(vm_name, config)
 }
 
@@ -280,6 +287,11 @@ impl Commands {
                     (@arg HOSTPORT: +required "Port on localhost to map to guest")
                     (@arg GUESTPORT: +required "Port on guest to expose")
                 )
+                (@subcommand portunmap =>
+                    (about: "Adjust port mappings:")
+                    (@arg NAME: +required "Name of VM")
+                    (@arg HOSTPORT: +required "Port on localhost to map to guest")
+                )
             )
             // (@subcommand network_test =>
             //     (about: "you have a development build! :) p.s. don't run this")
@@ -345,10 +357,17 @@ impl Commands {
                             Ok(hostport) => {
                                 let guestport = args.value_of("GUESTPORT").unwrap_or("");
                                 match guestport.parse::<u16>() {
-                                    Ok(guestport) => portmap(vm_name, hostport, guestport)?,
+                                    Ok(guestport) => port_map(vm_name, hostport, guestport)?,
                                     Err(e) => return Err(Error::from(e)),
                                 }
                             }
+                            Err(e) => return Err(Error::from(e)),
+                        }
+                    }),
+                    "portunmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
+                        match hostport.parse::<u16>() {
+                            Ok(hostport) => port_unmap(vm_name, hostport)?,
                             Err(e) => return Err(Error::from(e)),
                         }
                     }),
