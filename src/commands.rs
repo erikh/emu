@@ -1,6 +1,8 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
 
+use clap::ArgMatches;
+
 use crate::image::{Imager, QEmuImager};
 use crate::launcher::{EmulatorLauncher, QemuLauncher};
 use crate::network::{BridgeManager, NetworkManager};
@@ -191,6 +193,12 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
     imager.clone(from, to)
 }
 
+fn show_config(vm_name: &str) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+    println!("{}", dsh.config(vm_name)?.to_string());
+    Ok(())
+}
+
 async fn network_test() -> Result<(), Error> {
     let bm = BridgeManager {};
     let network = bm.create_network("test").await?;
@@ -253,6 +261,13 @@ impl Commands {
                 (@arg FROM: +required "VM to clone from")
                 (@arg TO: +required "VM to clone to")
             )
+            (@subcommand config =>
+                (about: "Show and manipulate VM configuration")
+                (@subcommand show =>
+                    (about: "Show the written+inferred configuration for a VM")
+                    (@arg NAME: +required "Name of VM")
+                )
+            )
             // (@subcommand network_test =>
             //     (about: "you have a development build! :) p.s. don't run this")
             // )
@@ -299,6 +314,21 @@ impl Commands {
                 shutdown(vm_name)?
             }),
             "supervised" => supervised(),
+            "config" => {
+                let (cmd, args) = args.subcommand();
+                let am = ArgMatches::new();
+                let args = match args {
+                    Some(args) => args,
+                    None => &am,
+                };
+
+                match cmd {
+                    "show" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                        show_config(vm_name)?
+                    }),
+                    _ => Ok(()),
+                }
+            }
             "clone" => Ok(if let Some(from) = args.value_of("FROM") {
                 if let Some(to) = args.value_of("TO") {
                     clone(from, to)?

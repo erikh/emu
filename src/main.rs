@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod error;
 mod image;
+mod ini_writer;
 mod launcher;
 mod network;
 mod qmp;

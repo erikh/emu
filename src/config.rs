@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use crate::error::Error;
+use crate::ini_writer::*;
 use ini::ini;
+use std::io::Write;
 
 const DEFAULT_CPUS: u32 = 8;
 const DEFAULT_MEMORY: u32 = 16384;
@@ -84,6 +86,36 @@ impl Configuration {
             vga: exists_or_default(&ini, "machine", "vga", DEFAULT_VGA),
             ports: get_ports(&ini),
         }
+    }
+
+    pub fn to_file(&self, filename: &str) -> Result<(), Error> {
+        let mut f = std::fs::File::create(filename)?;
+        f.write_all(to_ini(&self.to_ini()).as_bytes())?;
+
+        Ok(())
+    }
+
+    pub fn to_string(&self) -> String {
+        to_ini(&self.to_ini())
+    }
+
+    pub fn to_ini(&self) -> Ini {
+        let mut ini = Ini::new();
+        let mut machine = HashMap::new();
+        let mut ports = HashMap::new();
+
+        machine.insert(String::from("memory"), Some(self.memory.to_string()));
+        machine.insert(String::from("cpus"), Some(self.cpus.to_string()));
+        machine.insert(String::from("vga"), Some(self.vga.clone()));
+        ini.insert(String::from("machine"), machine);
+
+        for (host, guest) in self.ports.clone() {
+            ports.insert(host.to_string(), Some(guest.to_string()));
+        }
+
+        ini.insert(String::from("ports"), ports);
+
+        ini
     }
 
     pub fn valid(&self) -> Result<(), Error> {
