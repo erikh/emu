@@ -329,12 +329,19 @@ impl Commands {
         )
     }
 
-    fn evaluate_config_subcommand(&self, args: &ArgMatches) -> Result<(), Error> {
-        let (cmd, args) = args.subcommand();
-        let am = ArgMatches::new();
+    fn show_usage(&self, orig_args: &ArgMatches) -> Result<(), Error> {
+        let stderr = std::io::stderr();
+        let mut lock = stderr.lock();
+        lock.write_all(orig_args.usage().as_bytes())?;
+        lock.write_all(b"\n\n")?;
+        return Ok(());
+    }
+
+    fn evaluate_config_subcommand(&self, orig_args: &ArgMatches) -> Result<(), Error> {
+        let (cmd, args) = orig_args.subcommand();
         let args = match args {
             Some(args) => args,
-            None => &am,
+            None => return self.show_usage(orig_args),
         };
 
         match cmd {
@@ -347,11 +354,10 @@ impl Commands {
                 config_set(vm_name, key, value)?
             }),
             "port" => {
-                let (cmd, args) = args.subcommand();
-                let am = ArgMatches::new();
-                let args = match args {
+                let (cmd, portargs) = args.subcommand();
+                let args = match portargs {
                     Some(args) => args,
-                    None => &am,
+                    None => return self.show_usage(args),
                 };
 
                 match cmd {
