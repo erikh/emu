@@ -147,25 +147,29 @@ fn shutdown(vm_name: &str) -> Result<(), Error> {
     launcher.shutdown_vm(vm_name, dsh)
 }
 
-fn run(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
+fn run(vm_name: &str, cdrom: Option<&str>, detach: bool) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
     if !dsh.valid_filename(vm_name) {
         return Err(Error::new("invalid VM name"));
     }
 
     let launcher = QemuLauncher::default();
-    let mut child = launcher.launch_vm(vm_name, cdrom, dsh)?;
+    let mut child = launcher.launch_vm(vm_name, cdrom, detach, dsh)?;
 
-    let exit = child.wait();
-    match exit {
-        Ok(es) => {
-            if es.success() {
-                Ok(())
-            } else {
-                Err(Error::new(&format!("qemu exited uncleanly: {}", es)))
+    if !detach {
+        let exit = child.wait();
+        match exit {
+            Ok(es) => {
+                if es.success() {
+                    Ok(())
+                } else {
+                    Err(Error::new(&format!("qemu exited uncleanly: {}", es)))
+                }
             }
+            Err(e) => Err(Error::from(e)),
         }
-        Err(e) => Err(Error::from(e)),
+    } else {
+        Ok(())
     }
 }
 
@@ -264,6 +268,7 @@ impl Commands {
             )
             (@subcommand run =>
                 (about: "Just run a pre-created VM; no systemd involved")
+                (@arg detach: -d --detach "Do not wait for qemu to exit")
                 (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image")
                 (@arg NAME: +required "Name of VM")
             )
@@ -402,7 +407,7 @@ impl Commands {
                 unsupervise(vm_name)?
             }),
             "run" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                run(vm_name, args.value_of("cdrom"))?
+                run(vm_name, args.value_of("cdrom"), args.is_present("detach"))?
             }),
             "list" => list(),
             "shutdown" => Ok(if let Some(vm_name) = args.value_of("NAME") {

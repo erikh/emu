@@ -2,8 +2,9 @@ use crate::error::Error;
 use crate::image::QEMU_IMG_NAME;
 use crate::qmp::{Client, UnixSocket};
 use crate::storage::{DirectoryStorageHandler, StorageHandler};
+use fork::{daemon, Fork};
 use std::os::unix::net::UnixStream;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command};
 
 pub enum Architecture {
     X86_64,
@@ -14,6 +15,7 @@ pub trait EmulatorLauncher {
         &self,
         name: &str,
         cdrom: Option<&str>,
+        detach: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Child, Error>;
 
@@ -76,16 +78,27 @@ impl EmulatorLauncher for QemuLauncher {
         &self,
         name: &str,
         cdrom: Option<&str>,
+        detach: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Child, Error> {
         match self.emulator_args(name, cdrom, sh) {
             Ok(args) => {
-                match Command::new(self.emulator_path())
-                    .args(args)
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .spawn()
-                {
+                let mut cmd = Command::new(self.emulator_path());
+
+                let spawnres = if detach {
+                    if let Ok(Fork::Child) = daemon(false, false) {
+                        cmd.args(args).spawn()
+                    } else {
+                        Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            "could not fork",
+                        ))
+                    }
+                } else {
+                    cmd.args(args).spawn()
+                };
+
+                match spawnres {
                     Ok(child) => Ok(child),
                     Err(e) => Err(Error::from(e)),
                 }
