@@ -133,4 +133,8 @@ impl Configuration {
     pub fn check_ports(&self) -> Result<(), Error> {
         Ok(())
     }
+
+    pub fn map_port(&mut self, hostport: u16, guestport: u16) {
+        self.ports.insert(hostport, guestport);
+    }
 }

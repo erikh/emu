@@ -70,6 +70,7 @@ pub trait StorageHandler: fmt::Debug {
     fn vm_root(&self, name: &str) -> Result<String, Error>;
     fn monitor_path(&self, vm_name: &str) -> Result<String, Error>;
     fn config(&self, vm_name: &str) -> Result<Configuration, Error>;
+    fn write_config(&self, vm_name: &str, config: Configuration) -> Result<(), Error>;
     fn vm_exists(&self, name: &str) -> bool;
     fn vm_list(&self) -> Result<Vec<String>, Error>;
     fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error>;
@@ -139,6 +140,17 @@ impl StorageHandler for DirectoryStorageHandler {
             Ok(Configuration::from_file(path))
         } else {
             Ok(Configuration::default())
+        }
+    }
+
+    fn write_config(&self, vm_name: &str, config: Configuration) -> Result<(), Error> {
+        if let Some(path) = PathBuf::from(self.vm_root(vm_name)?)
+            .join("config")
+            .to_str()
+        {
+            config.to_file(path)
+        } else {
+            Err(Error::new("cannot construct path for vm"))
         }
     }
 

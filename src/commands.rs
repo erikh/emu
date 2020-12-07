@@ -199,6 +199,13 @@ fn show_config(vm_name: &str) -> Result<(), Error> {
     Ok(())
 }
 
+fn portmap(vm_name: &str, hostport: u16, guestport: u16) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+    let mut config = dsh.config(vm_name)?;
+    config.map_port(hostport, guestport);
+    dsh.write_config(vm_name, config)
+}
+
 async fn network_test() -> Result<(), Error> {
     let bm = BridgeManager {};
     let network = bm.create_network("test").await?;
@@ -267,6 +274,12 @@ impl Commands {
                     (about: "Show the written+inferred configuration for a VM")
                     (@arg NAME: +required "Name of VM")
                 )
+                (@subcommand portmap =>
+                    (about: "Adjust port mappings:")
+                    (@arg NAME: +required "Name of VM")
+                    (@arg HOSTPORT: +required "Port on localhost to map to guest")
+                    (@arg GUESTPORT: +required "Port on guest to expose")
+                )
             )
             // (@subcommand network_test =>
             //     (about: "you have a development build! :) p.s. don't run this")
@@ -325,6 +338,19 @@ impl Commands {
                 match cmd {
                     "show" => Ok(if let Some(vm_name) = args.value_of("NAME") {
                         show_config(vm_name)?
+                    }),
+                    "portmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
+                        match hostport.parse::<u16>() {
+                            Ok(hostport) => {
+                                let guestport = args.value_of("GUESTPORT").unwrap_or("");
+                                match guestport.parse::<u16>() {
+                                    Ok(guestport) => portmap(vm_name, hostport, guestport)?,
+                                    Err(e) => return Err(Error::from(e)),
+                                }
+                            }
+                            Err(e) => return Err(Error::from(e)),
+                        }
                     }),
                     _ => Ok(()),
                 }
