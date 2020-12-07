@@ -299,6 +299,42 @@ impl Commands {
         )
     }
 
+    fn evaluate_config_subcommand(&self, args: &ArgMatches) -> Result<(), Error> {
+        let (cmd, args) = args.subcommand();
+        let am = ArgMatches::new();
+        let args = match args {
+            Some(args) => args,
+            None => &am,
+        };
+
+        match cmd {
+            "show" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                show_config(vm_name)?
+            }),
+            "portmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                let hostport = args.value_of("HOSTPORT").unwrap_or("");
+                match hostport.parse::<u16>() {
+                    Ok(hostport) => {
+                        let guestport = args.value_of("GUESTPORT").unwrap_or("");
+                        match guestport.parse::<u16>() {
+                            Ok(guestport) => port_map(vm_name, hostport, guestport)?,
+                            Err(e) => return Err(Error::from(e)),
+                        }
+                    }
+                    Err(e) => return Err(Error::from(e)),
+                }
+            }),
+            "portunmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
+                let hostport = args.value_of("HOSTPORT").unwrap_or("");
+                match hostport.parse::<u16>() {
+                    Ok(hostport) => port_unmap(vm_name, hostport)?,
+                    Err(e) => return Err(Error::from(e)),
+                }
+            }),
+            _ => Ok(()),
+        }
+    }
+
     pub async fn evaluate(&self) -> Result<(), Error> {
         let app = self.get_clap();
         let matches = app.clone().get_matches();
@@ -339,41 +375,7 @@ impl Commands {
                 shutdown(vm_name)?
             }),
             "supervised" => supervised(),
-            "config" => {
-                let (cmd, args) = args.subcommand();
-                let am = ArgMatches::new();
-                let args = match args {
-                    Some(args) => args,
-                    None => &am,
-                };
-
-                match cmd {
-                    "show" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                        show_config(vm_name)?
-                    }),
-                    "portmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
-                        match hostport.parse::<u16>() {
-                            Ok(hostport) => {
-                                let guestport = args.value_of("GUESTPORT").unwrap_or("");
-                                match guestport.parse::<u16>() {
-                                    Ok(guestport) => port_map(vm_name, hostport, guestport)?,
-                                    Err(e) => return Err(Error::from(e)),
-                                }
-                            }
-                            Err(e) => return Err(Error::from(e)),
-                        }
-                    }),
-                    "portunmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
-                        match hostport.parse::<u16>() {
-                            Ok(hostport) => port_unmap(vm_name, hostport)?,
-                            Err(e) => return Err(Error::from(e)),
-                        }
-                    }),
-                    _ => Ok(()),
-                }
-            }
+            "config" => self.evaluate_config_subcommand(args),
             "clone" => Ok(if let Some(from) = args.value_of("FROM") {
                 if let Some(to) = args.value_of("TO") {
                     clone(from, to)?
