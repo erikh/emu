@@ -16,6 +16,7 @@ pub trait EmulatorLauncher {
         name: &str,
         cdrom: Option<&str>,
         detach: bool,
+        headless: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Child, Error>;
 
@@ -28,6 +29,7 @@ pub trait EmulatorLauncher {
         &self,
         vm_name: &str,
         cdrom: Option<&str>,
+        headless: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Vec<String>, Error>;
 }
@@ -79,9 +81,10 @@ impl EmulatorLauncher for QemuLauncher {
         name: &str,
         cdrom: Option<&str>,
         detach: bool,
+        headless: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Child, Error> {
-        match self.emulator_args(name, cdrom, sh) {
+        match self.emulator_args(name, cdrom, headless, sh) {
             Ok(args) => {
                 let mut cmd = Command::new(self.emulator_path());
 
@@ -123,6 +126,7 @@ impl EmulatorLauncher for QemuLauncher {
         &self,
         vm_name: &str,
         cdrom: Option<&str>,
+        headless: bool,
         sh: DirectoryStorageHandler,
     ) -> Result<Vec<String>, Error> {
         if self.valid(vm_name).is_ok() {
@@ -139,8 +143,6 @@ impl EmulatorLauncher for QemuLauncher {
                     String::from("chardev=char0,mode=control,pretty=on"),
                     String::from("-machine"),
                     String::from("accel=kvm"),
-                    String::from("-display"),
-                    String::from("gtk"),
                     String::from("-vga"),
                     config.vga,
                     String::from("-m"),
@@ -157,6 +159,13 @@ impl EmulatorLauncher for QemuLauncher {
                     String::from("-nic"),
                     format!("user{}", self.hostfwd_rules(vm_name)?),
                 ];
+
+                v.push(String::from("-display"));
+                if !headless {
+                    v.push(String::from("gtk"));
+                } else {
+                    v.push(String::from("none"));
+                }
 
                 if let Some(cd) = cdrom {
                     match std::fs::metadata(cd) {

@@ -147,14 +147,14 @@ fn shutdown(vm_name: &str) -> Result<(), Error> {
     launcher.shutdown_vm(vm_name, dsh)
 }
 
-fn run(vm_name: &str, cdrom: Option<&str>, detach: bool) -> Result<(), Error> {
+fn run(vm_name: &str, cdrom: Option<&str>, detach: bool, headless: bool) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
     if !dsh.valid_filename(vm_name) {
         return Err(Error::new("invalid VM name"));
     }
 
     let launcher = QemuLauncher::default();
-    let mut child = launcher.launch_vm(vm_name, cdrom, detach, dsh)?;
+    let mut child = launcher.launch_vm(vm_name, cdrom, detach, headless, dsh)?;
 
     if !detach {
         let exit = child.wait();
@@ -268,6 +268,7 @@ impl Commands {
             )
             (@subcommand run =>
                 (about: "Just run a pre-created VM; no systemd involved")
+                (@arg headless: -e --headless "Run without a video window")
                 (@arg detach: -d --detach "Do not wait for qemu to exit")
                 (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image")
                 (@arg NAME: +required "Name of VM")
@@ -407,7 +408,12 @@ impl Commands {
                 unsupervise(vm_name)?
             }),
             "run" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                run(vm_name, args.value_of("cdrom"), args.is_present("detach"))?
+                run(
+                    vm_name,
+                    args.value_of("cdrom"),
+                    args.is_present("detach"),
+                    args.is_present("headless"),
+                )?
             }),
             "list" => list(),
             "shutdown" => Ok(if let Some(vm_name) = args.value_of("NAME") {
