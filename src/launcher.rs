@@ -136,6 +136,8 @@ pub mod emulators {
                                 String::from("chardev=char0,mode=control,pretty=on"),
                                 String::from("-machine"),
                                 String::from("accel=kvm"),
+                                String::from("-bios"),
+                                String::from("/usr/share/ovmf/OVMF.fd"),
                                 String::from("-vga"),
                                 config.vga,
                                 String::from("-m"),
@@ -143,10 +145,10 @@ pub mod emulators {
                                 String::from("-cpu"),
                                 config.cpu_type,
                                 String::from("-smp"),
-                                format!("cpus=1,cores={},maxcpus={}", config.cpus, config.cpus,),
+                                format!("cpus=1,cores={},maxcpus={}", config.cpus, config.cpus),
                                 String::from("-drive"),
                                 format!(
-                                    "driver=qcow2,if={},file={},cache=none,media=disk",
+                                    "driver=qcow2,if={},file={},cache=none,media=disk,index=0",
                                     config.image_interface, img_path
                                 ),
                                 String::from("-nic"),

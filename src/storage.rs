@@ -99,7 +99,7 @@ impl Default for DirectoryStorageHandler {
 
 impl StorageHandler for DirectoryStorageHandler {
     fn valid_filename(&self, name: &str) -> bool {
-        !(name.contains("..") || name.contains(std::path::MAIN_SEPARATOR) || name.contains("\0"))
+        !(name.contains("..") || name.contains(std::path::MAIN_SEPARATOR) || name.contains("\x00"))
     }
 
     fn base_path(&self) -> String {

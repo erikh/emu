@@ -202,6 +202,11 @@ fn run(
     }
 }
 
+fn import(vm_name: &str, from_file: &str, format: &str) -> Result<(), Error> {
+    let imager = QEmuImager::default();
+    imager.import(vm_name, from_file, format)
+}
+
 fn clone(from: &str, to: &str) -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
 
@@ -338,6 +343,12 @@ impl Commands {
                 (about: "Clone one vm to another")
                 (@arg FROM: +required "VM to clone from")
                 (@arg TO: +required "VM to clone to")
+            )
+            (@subcommand import =>
+                (about: "Import a VM from a VM image file")
+                (@arg format: -f --format +takes_value +required "Format of incoming image")
+                (@arg NAME: +required "VM to import to")
+                (@arg FROM_FILE: +required "VM image to import from")
             )
             (@subcommand config =>
                 (about: "Show and manipulate VM configuration")
@@ -489,6 +500,11 @@ impl Commands {
                     clone(from, to)?
                 }
             }),
+            "import" => import(
+                args.value_of("NAME").unwrap(),
+                args.value_of("FROM_FILE").unwrap(),
+                args.value_of("format").unwrap(),
+            ),
             "network_test" => network_test().await,
             _ => Ok(()),
         }
