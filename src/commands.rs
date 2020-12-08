@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::os::unix::net::UnixStream;
 use std::process::{Command, Stdio};
 
 use clap::ArgMatches;
@@ -9,6 +10,7 @@ use crate::launcher::emulators::qemu;
 use crate::launcher::emulators::qemu::linux;
 use crate::launcher::*;
 use crate::network::{BridgeManager, NetworkManager};
+use crate::qmp::{Client, UnixSocket};
 use crate::storage::{DirectoryStorageHandler, StorageHandler, SystemdStorage};
 use crate::template::Systemd;
 
@@ -251,6 +253,21 @@ fn port_unmap(vm_name: &str, hostport: u16) -> Result<(), Error> {
     dsh.write_config(vm_name, config)
 }
 
+fn qmp(vm_name: &str, command: &str, args: Option<&str>) -> Result<(), Error> {
+    let dsh = DirectoryStorageHandler::default();
+    let stream = UnixStream::connect(dsh.monitor_path(vm_name)?)?;
+    let mut us = UnixSocket::new(stream)?;
+    us.handshake()?;
+    us.send_command("qmp_capabilities", None)?;
+    let val = match args {
+        Some(args) => us.send_command(command, Some(serde_json::from_str(args)?))?,
+        None => us.send_command(command, None)?,
+    };
+
+    println!("{}", val);
+    Ok(())
+}
+
 async fn network_test() -> Result<(), Error> {
     let bm = BridgeManager {};
     let network = bm.create_network("test").await?;
@@ -304,6 +321,12 @@ impl Commands {
             (@subcommand shutdown =>
                 (about: "Gracefully shutdown a pre-created VM.")
                 (@arg NAME: +required "Name of VM")
+            )
+            (@subcommand qmp =>
+                (about: "Issue QMP commands to the guest.")
+                (@arg NAME: +required "Name of VM")
+                (@arg COMMAND: +required "Command to issue")
+                (@arg ARGUMENTS: "Arguments to send for command, JSON literal")
             )
             (@subcommand list =>
                 (about: "Yield a list of VMs, one on each line")
@@ -454,6 +477,11 @@ impl Commands {
             "shutdown" => Ok(if let Some(vm_name) = args.value_of("NAME") {
                 shutdown(vm_name)?
             }),
+            "qmp" => qmp(
+                args.value_of("NAME").unwrap(),
+                args.value_of("COMMAND").unwrap(),
+                args.value_of("ARGUMENTS"),
+            ),
             "supervised" => supervised(),
             "config" => self.evaluate_config_subcommand(args),
             "clone" => Ok(if let Some(from) = args.value_of("FROM") {
