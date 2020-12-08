@@ -3,14 +3,14 @@ use std::process::{Command, Stdio};
 
 use clap::ArgMatches;
 
+use crate::error::Error;
 use crate::image::{Imager, QEmuImager};
 use crate::launcher::emulators::qemu;
 use crate::launcher::emulators::qemu::linux;
 use crate::launcher::*;
 use crate::network::{BridgeManager, NetworkManager};
-use crate::storage::{DirectoryStorageHandler, StorageHandler};
+use crate::storage::{DirectoryStorageHandler, StorageHandler, SystemdStorage};
 use crate::template::Systemd;
-use crate::{error::Error, storage::SystemdStorage};
 
 fn list() -> Result<(), Error> {
     let dsh = DirectoryStorageHandler::default();
