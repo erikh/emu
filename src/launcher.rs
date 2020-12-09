@@ -137,6 +137,29 @@ pub mod emulators {
 
                     Ok(res)
                 }
+
+                fn extra_disk_rules(
+                    &self,
+                    v: &mut Vec<String>,
+                    disk: Option<String>,
+                    index: u8,
+                ) -> Result<(), Error> {
+                    if let Some(cd) = disk {
+                        match std::fs::metadata(&cd) {
+                            Ok(_) => {
+                                append_vec!(v, "-drive");
+                                append_vec!(v, format!("file={},media=cdrom,index={}", cd, index));
+                            }
+                            Err(e) => {
+                                return Err(Error::new(&format!(
+                                    "error locating cdrom file: {}",
+                                    e
+                                )))
+                            }
+                        }
+                    }
+                    Ok(())
+                }
             }
 
             impl launcher::Emulator for Emulator {
@@ -183,35 +206,8 @@ pub mod emulators {
                                 append_vec!(v, "none");
                             }
 
-                            if let Some(cd) = rc.cdrom.clone() {
-                                match std::fs::metadata(&cd) {
-                                    Ok(_) => {
-                                        append_vec!(v, "-cdrom");
-                                        append_vec!(v, cd);
-                                    }
-                                    Err(e) => {
-                                        return Err(Error::new(&format!(
-                                            "error locating cdrom file: {}",
-                                            e
-                                        )))
-                                    }
-                                }
-                            }
-
-                            if let Some(cd) = rc.extra_disk.clone() {
-                                match std::fs::metadata(&cd) {
-                                    Ok(_) => {
-                                        append_vec!(v, "-drive");
-                                        append_vec!(v, format!("file={},media=cdrom", cd));
-                                    }
-                                    Err(e) => {
-                                        return Err(Error::new(&format!(
-                                            "error locating cdrom file: {}",
-                                            e
-                                        )))
-                                    }
-                                }
-                            }
+                            self.extra_disk_rules(&mut v, rc.cdrom.clone(), 3)?;
+                            self.extra_disk_rules(&mut v, rc.extra_disk.clone(), 4)?;
 
                             Ok(v)
                         } else {
