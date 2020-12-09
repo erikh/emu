@@ -136,8 +136,6 @@ pub mod emulators {
                                 String::from("chardev=char0,mode=control,pretty=on"),
                                 String::from("-machine"),
                                 String::from("accel=kvm"),
-                                String::from("-bios"),
-                                String::from("/usr/share/ovmf/OVMF.fd"),
                                 String::from("-vga"),
                                 config.vga,
                                 String::from("-m"),
