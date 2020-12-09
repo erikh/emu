@@ -3,6 +3,29 @@ use crate::storage::DirectoryStorageHandler;
 use fork::{daemon, Fork};
 use std::process::Command;
 
+#[macro_export]
+macro_rules! string_vec {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($x.into());
+            )*
+                temp_vec
+        }
+    };
+}
+
+macro_rules! append_vec {
+    ( $v:expr, $( $x:expr ),* ) => {
+        {
+            $(
+                $v.push($x.into());
+            )*
+        }
+    };
+}
+
 pub struct RuntimeConfig {
     pub cdrom: Option<String>,
     pub extra_disk: Option<String>,
@@ -128,43 +151,43 @@ pub mod emulators {
                             let img_path = rc.dsh.vm_path(vm_name, QEMU_IMG_NAME)?;
                             let mon = rc.dsh.monitor_path(vm_name)?;
 
-                            let mut v = vec![
-                                String::from("-nodefaults"),
-                                String::from("-chardev"),
+                            let mut v: Vec<String> = string_vec![
+                                "-nodefaults",
+                                "-chardev",
                                 format!("socket,server,nowait,id=char0,path={}", mon),
-                                String::from("-mon"),
-                                String::from("chardev=char0,mode=control,pretty=on"),
-                                String::from("-machine"),
-                                String::from("accel=kvm"),
-                                String::from("-vga"),
+                                "-mon",
+                                "chardev=char0,mode=control,pretty=on",
+                                "-machine",
+                                "accel=kvm",
+                                "-vga",
                                 config.vga,
-                                String::from("-m"),
+                                "-m",
                                 format!("{}M", config.memory),
-                                String::from("-cpu"),
+                                "-cpu",
                                 config.cpu_type,
-                                String::from("-smp"),
+                                "-smp",
                                 format!("cpus=1,cores={},maxcpus={}", config.cpus, config.cpus),
-                                String::from("-drive"),
+                                "-drive",
                                 format!(
                                     "driver=qcow2,if={},file={},cache=none,media=disk,index=0",
                                     config.image_interface, img_path
                                 ),
-                                String::from("-nic"),
-                                format!("user{}", self.hostfwd_rules(vm_name, rc)?),
+                                "-nic",
+                                format!("user{}", self.hostfwd_rules(vm_name, rc)?)
                             ];
 
-                            v.push(String::from("-display"));
+                            append_vec!(v, "-display");
                             if !rc.headless {
-                                v.push(String::from("gtk"));
+                                append_vec!(v, "gtk");
                             } else {
-                                v.push(String::from("none"));
+                                append_vec!(v, "none");
                             }
 
                             if let Some(cd) = rc.cdrom.clone() {
                                 match std::fs::metadata(&cd) {
                                     Ok(_) => {
-                                        v.push(String::from("-cdrom"));
-                                        v.push(String::from(cd));
+                                        append_vec!(v, "-cdrom");
+                                        append_vec!(v, cd);
                                     }
                                     Err(e) => {
                                         return Err(Error::new(&format!(
@@ -178,8 +201,8 @@ pub mod emulators {
                             if let Some(cd) = rc.extra_disk.clone() {
                                 match std::fs::metadata(&cd) {
                                     Ok(_) => {
-                                        v.push(String::from("-drive"));
-                                        v.push(format!("file={},media=cdrom", cd));
+                                        append_vec!(v, "-drive");
+                                        append_vec!(v, format!("file={},media=cdrom", cd));
                                     }
                                     Err(e) => {
                                         return Err(Error::new(&format!(
