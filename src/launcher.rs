@@ -138,7 +138,7 @@ pub mod emulators {
                     Ok(res)
                 }
 
-                fn extra_disk_rules(
+                fn cdrom_rules(
                     &self,
                     v: &mut Vec<String>,
                     disk: Option<String>,
@@ -159,6 +159,15 @@ pub mod emulators {
                         }
                     }
                     Ok(())
+                }
+
+                fn display_rule(&self, v: &mut Vec<String>, headless: bool) {
+                    append_vec!(v, "-display");
+                    if !headless {
+                        append_vec!(v, "gtk");
+                    } else {
+                        append_vec!(v, "none");
+                    }
                 }
             }
 
@@ -199,15 +208,9 @@ pub mod emulators {
                                 format!("user{}", self.hostfwd_rules(vm_name, rc)?)
                             ];
 
-                            append_vec!(v, "-display");
-                            if !rc.headless {
-                                append_vec!(v, "gtk");
-                            } else {
-                                append_vec!(v, "none");
-                            }
-
-                            self.extra_disk_rules(&mut v, rc.cdrom.clone(), 3)?;
-                            self.extra_disk_rules(&mut v, rc.extra_disk.clone(), 4)?;
+                            self.display_rule(&mut v, rc.headless);
+                            self.cdrom_rules(&mut v, rc.cdrom.clone(), 3)?;
+                            self.cdrom_rules(&mut v, rc.extra_disk.clone(), 4)?;
 
                             Ok(v)
                         } else {
