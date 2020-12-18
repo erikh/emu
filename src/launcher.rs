@@ -209,8 +209,8 @@ pub mod emulators {
                             ];
 
                             self.display_rule(&mut v, rc.headless);
-                            self.cdrom_rules(&mut v, rc.cdrom.clone(), 3)?;
-                            self.cdrom_rules(&mut v, rc.extra_disk.clone(), 4)?;
+                            self.cdrom_rules(&mut v, rc.cdrom.clone(), 2)?;
+                            self.cdrom_rules(&mut v, rc.extra_disk.clone(), 3)?;
 
                             Ok(v)
                         } else {
