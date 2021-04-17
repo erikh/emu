@@ -28,7 +28,7 @@ Install [rustup](https://rustup.rs) to get a cargo environment, and install it
 from source:
 
 ```
-cargo install --git https://github.com/erikh/emu
+cargo install --git https://github.com/erikh/emu --branch main
 ```
 
 Once installed, you can invoke the software with `emu`.
