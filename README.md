@@ -16,11 +16,11 @@ group.
 
 ## Stability
 
-Since emu is a really new project I'll keep this brief: do not depend on this
-software.
-
-I don't really know what I'm trying to do with this software yet. Until then,
+I not 100% certain what I'm trying to do with this software yet. Until then,
 perhaps you'll find it interesting or entertaining to play with.
+
+emu has bugs. They don't get fixed quickly unless you fix them. I just have
+limited time and emu largely stays out of my way as it stands.
 
 ## Installation
 
@@ -28,7 +28,7 @@ Install [rustup](https://rustup.rs) to get a cargo environment, and install it
 from source:
 
 ```
-cargo install --git https://code.hollensbe.org/erikh/emu
+cargo install --git https://github.com/erikh/emu
 ```
 
 Once installed, you can invoke the software with `emu`.
