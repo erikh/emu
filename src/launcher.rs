@@ -198,7 +198,10 @@ pub mod emulators {
                                 "-cpu",
                                 config.cpu_type,
                                 "-smp",
-                                format!("cpus=1,cores={},maxcpus={}", config.cpus, config.cpus),
+                                format!(
+                                    "cpus={},cores={},maxcpus={}",
+                                    config.cpus, config.cpus, config.cpus
+                                ),
                                 "-drive",
                                 format!(
                                     "driver=qcow2,if={},file={},cache=none,media=disk,index=0",
