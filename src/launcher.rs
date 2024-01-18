@@ -173,7 +173,7 @@ pub mod emulators {
                             let mut v: Vec<String> = string_vec![
                                 "-nodefaults",
                                 "-chardev",
-                                format!("socket,server,nowait,id=char0,path={}", mon),
+                                format!("socket,server=on,wait=off,id=char0,path={}", mon),
                                 "-mon",
                                 "chardev=char0,mode=control,pretty=on",
                                 "-machine",
