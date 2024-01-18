@@ -1,5 +1,5 @@
-use crate::error::Error;
 use crate::storage::DirectoryStorageHandler;
+use anyhow::{anyhow, Result};
 use fork::{daemon, Fork};
 use std::process::Command;
 
@@ -34,12 +34,12 @@ pub struct RuntimeConfig {
 }
 
 pub trait Emulator {
-    fn args(&self, vm_name: &str, rc: &RuntimeConfig) -> Result<Vec<String>, Error>;
-    fn bin(&self) -> Result<String, Error>;
+    fn args(&self, vm_name: &str, rc: &RuntimeConfig) -> Result<Vec<String>>;
+    fn bin(&self) -> Result<String>;
 }
 
 pub trait EmulatorController {
-    fn shutdown(&self, vm_name: &str) -> Result<(), Error>;
+    fn shutdown(&self, vm_name: &str) -> Result<()>;
 }
 
 pub struct Launcher {
@@ -52,11 +52,7 @@ impl Launcher {
         Self { emu, rc }
     }
 
-    pub fn launch(
-        &self,
-        vm_name: &str,
-        detach: bool,
-    ) -> Result<Option<std::process::ExitStatus>, Error> {
+    pub fn launch(&self, vm_name: &str, detach: bool) -> Result<Option<std::process::ExitStatus>> {
         let args = self.emu.args(vm_name, &self.rc)?;
         let mut cmd = Command::new(self.emu.bin()?);
         let spawnres = if detach {
@@ -80,17 +76,17 @@ impl Launcher {
                     Ok(None)
                 }
             }
-            Err(e) => Err(Error::from(e)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 }
 
 pub mod emulators {
     pub mod qemu {
-        use crate::error::Error;
         use crate::launcher;
         use crate::qmp::{Client, UnixSocket};
         use crate::storage::{DirectoryStorageHandler, StorageHandler};
+        use anyhow::Result;
         use std::os::unix::net::UnixStream;
 
         pub struct EmulatorController {
@@ -104,7 +100,7 @@ pub mod emulators {
         }
 
         impl launcher::EmulatorController for EmulatorController {
-            fn shutdown(&self, name: &str) -> Result<(), Error> {
+            fn shutdown(&self, name: &str) -> Result<()> {
                 let stream = UnixStream::connect(self.dsh.monitor_path(name)?)?;
                 let mut us = UnixSocket::new(stream)?;
                 us.handshake()?;
@@ -115,10 +111,10 @@ pub mod emulators {
         }
 
         pub mod linux {
-            use crate::error::Error;
             use crate::image::QEMU_IMG_NAME;
             use crate::launcher;
             use crate::storage::StorageHandler;
+            use anyhow::{anyhow, Result};
 
             pub struct Emulator {}
 
@@ -127,7 +123,7 @@ pub mod emulators {
                     &self,
                     vm_name: &str,
                     rc: &launcher::RuntimeConfig,
-                ) -> Result<String, Error> {
+                ) -> Result<String> {
                     let config = rc.dsh.config(vm_name)?;
                     config.check_ports()?;
                     let mut res = String::new();
@@ -143,19 +139,14 @@ pub mod emulators {
                     v: &mut Vec<String>,
                     disk: Option<String>,
                     index: u8,
-                ) -> Result<(), Error> {
+                ) -> Result<()> {
                     if let Some(cd) = disk {
                         match std::fs::metadata(&cd) {
                             Ok(_) => {
                                 append_vec!(v, "-drive");
                                 append_vec!(v, format!("file={},media=cdrom,index={}", cd, index));
                             }
-                            Err(e) => {
-                                return Err(Error::new(&format!(
-                                    "error locating cdrom file: {}",
-                                    e
-                                )))
-                            }
+                            Err(e) => return Err(anyhow!("error locating cdrom file: {}", e)),
                         }
                     }
                     Ok(())
@@ -172,11 +163,7 @@ pub mod emulators {
             }
 
             impl launcher::Emulator for Emulator {
-                fn args(
-                    &self,
-                    vm_name: &str,
-                    rc: &launcher::RuntimeConfig,
-                ) -> Result<Vec<String>, Error> {
+                fn args(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<Vec<String>> {
                     let config = rc.dsh.config(vm_name)?;
                     if config.valid().is_ok() {
                         if rc.dsh.vm_path_exists(vm_name, QEMU_IMG_NAME) {
@@ -217,17 +204,14 @@ pub mod emulators {
 
                             Ok(v)
                         } else {
-                            Err(Error::new("vm image does not exist"))
+                            Err(anyhow!("vm image does not exist"))
                         }
                     } else {
-                        Err(Error::new(&format!(
-                            "vm configuration is invalid: {:?}",
-                            config.valid(),
-                        )))
+                        Err(anyhow!("vm configuration is invalid: {:?}", config.valid(),))
                     }
                 }
 
-                fn bin(&self) -> Result<String, Error> {
+                fn bin(&self) -> Result<String> {
                     Ok(String::from("/bin/qemu-system-x86_64"))
                 }
             }

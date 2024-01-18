@@ -4,7 +4,6 @@ use std::process::{Command, Stdio};
 
 use clap::ArgMatches;
 
-use crate::error::Error;
 use crate::image::{Imager, QEmuImager};
 use crate::launcher::emulators::qemu;
 use crate::launcher::emulators::qemu::linux;
@@ -13,8 +12,9 @@ use crate::network::{BridgeManager, NetworkManager};
 use crate::qmp::{Client, UnixSocket};
 use crate::storage::{DirectoryStorageHandler, StorageHandler, SystemdStorage};
 use crate::template::Systemd;
+use anyhow::{anyhow, Result};
 
-fn list() -> Result<(), Error> {
+fn list() -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     match dsh.vm_list() {
         Ok(list) => {
@@ -27,7 +27,7 @@ fn list() -> Result<(), Error> {
     }
 }
 
-fn supervised() -> Result<(), Error> {
+fn supervised() -> Result<()> {
     let s = SystemdStorage::default();
     match s.list() {
         Ok(list) => {
@@ -40,15 +40,15 @@ fn supervised() -> Result<(), Error> {
     }
 }
 
-fn create(vm_name: &str, size: u32) -> Result<(), Error> {
+fn create(vm_name: &str, size: u32) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
-        return Err(Error::new("invalid VM name"));
+        return Err(anyhow!("invalid VM name"));
     }
 
     if dsh.vm_exists(vm_name) {
-        return Err(Error::new("vm already exists"));
+        return Err(anyhow!("vm already exists"));
     }
 
     match dsh.vm_root(vm_name) {
@@ -64,15 +64,15 @@ fn create(vm_name: &str, size: u32) -> Result<(), Error> {
     imager.create(vm_name, size)
 }
 
-fn delete(vm_name: &str) -> Result<(), Error> {
+fn delete(vm_name: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
-        return Err(Error::new("invalid VM name"));
+        return Err(anyhow!("invalid VM name"));
     }
 
     if !dsh.vm_exists(vm_name) {
-        return Err(Error::new("vm doesn't exist"));
+        return Err(anyhow!("vm doesn't exist"));
     }
 
     match dsh.vm_root(vm_name) {
@@ -87,15 +87,15 @@ fn delete(vm_name: &str) -> Result<(), Error> {
     Ok(())
 }
 
-fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
+fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
-        return Err(Error::new("invalid VM name"));
+        return Err(anyhow!("invalid VM name"));
     }
 
     if !dsh.vm_exists(vm_name) {
-        return Err(Error::new("vm doesn't exist"));
+        return Err(anyhow!("vm doesn't exist"));
     }
 
     let ss = SystemdStorage::default();
@@ -120,11 +120,11 @@ fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<(), Error> {
     reload_systemd()
 }
 
-fn unsupervise(vm_name: &str) -> Result<(), Error> {
+fn unsupervise(vm_name: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
-        return Err(Error::new("invalid VM name"));
+        return Err(anyhow!("invalid VM name"));
     }
 
     let s = SystemdStorage::default();
@@ -133,7 +133,7 @@ fn unsupervise(vm_name: &str) -> Result<(), Error> {
     reload_systemd()
 }
 
-fn reload_systemd() -> Result<(), Error> {
+fn reload_systemd() -> Result<()> {
     match Command::new("/bin/systemctl")
         .args(vec!["--user", "daemon-reload"])
         .stderr(Stdio::null())
@@ -144,17 +144,17 @@ fn reload_systemd() -> Result<(), Error> {
             if es.success() {
                 Ok(())
             } else {
-                Err(Error::new(&format!("systemctl exited uncleanly: {}", es)))
+                Err(anyhow!("systemctl exited uncleanly: {}", es))
             }
         }
-        Err(e) => Err(Error::from(e)),
+        Err(e) => Err(anyhow!(e)),
     }
 }
 
-fn shutdown(vm_name: &str) -> Result<(), Error> {
+fn shutdown(vm_name: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     if !dsh.valid_filename(vm_name) {
-        return Err(Error::new("invalid VM name"));
+        return Err(anyhow!("invalid VM name"));
     }
 
     let controller = qemu::EmulatorController::new(dsh);
@@ -167,10 +167,10 @@ fn run(
     extra_disk: Option<&str>,
     detach: bool,
     headless: bool,
-) -> Result<(), Error> {
+) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     if !dsh.valid_filename(vm_name) {
-        return Err(Error::new("invalid VM name"));
+        return Err(anyhow!("invalid VM name"));
     }
 
     let emu = linux::Emulator {};
@@ -195,27 +195,27 @@ fn run(
             if es.success() {
                 Ok(())
             } else {
-                Err(Error::new(&format!("qemu exited uncleanly: {}", es)))
+                Err(anyhow!("qemu exited uncleanly: {}", es))
             }
         }
         None => Ok(()),
     }
 }
 
-fn import(vm_name: &str, from_file: &str, format: &str) -> Result<(), Error> {
+fn import(vm_name: &str, from_file: &str, format: &str) -> Result<()> {
     let imager = QEmuImager::default();
     imager.import(vm_name, from_file, format)
 }
 
-fn clone(from: &str, to: &str) -> Result<(), Error> {
+fn clone(from: &str, to: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(to) {
-        return Err(Error::new("invalid VM name"));
+        return Err(anyhow!("invalid VM name"));
     }
 
     if dsh.vm_exists(to) {
-        return Err(Error::new("vm already exists"));
+        return Err(anyhow!("vm already exists"));
     }
 
     match dsh.vm_root(to) {
@@ -231,34 +231,34 @@ fn clone(from: &str, to: &str) -> Result<(), Error> {
     imager.clone(from, to)
 }
 
-fn show_config(vm_name: &str) -> Result<(), Error> {
+fn show_config(vm_name: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     println!("{}", dsh.config(vm_name)?.to_string());
     Ok(())
 }
 
-fn config_set(vm_name: &str, key: &str, value: &str) -> Result<(), Error> {
+fn config_set(vm_name: &str, key: &str, value: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     let mut config = dsh.config(vm_name)?;
     config.set_machine_value(key, value)?;
     dsh.write_config(vm_name, config)
 }
 
-fn port_map(vm_name: &str, hostport: u16, guestport: u16) -> Result<(), Error> {
+fn port_map(vm_name: &str, hostport: u16, guestport: u16) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     let mut config = dsh.config(vm_name)?;
     config.map_port(hostport, guestport);
     dsh.write_config(vm_name, config)
 }
 
-fn port_unmap(vm_name: &str, hostport: u16) -> Result<(), Error> {
+fn port_unmap(vm_name: &str, hostport: u16) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     let mut config = dsh.config(vm_name)?;
     config.unmap_port(hostport);
     dsh.write_config(vm_name, config)
 }
 
-fn qmp(vm_name: &str, command: &str, args: Option<&str>) -> Result<(), Error> {
+fn qmp(vm_name: &str, command: &str, args: Option<&str>) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     let stream = UnixStream::connect(dsh.monitor_path(vm_name)?)?;
     let mut us = UnixSocket::new(stream)?;
@@ -273,7 +273,7 @@ fn qmp(vm_name: &str, command: &str, args: Option<&str>) -> Result<(), Error> {
     Ok(())
 }
 
-async fn network_test() -> Result<(), Error> {
+async fn network_test() -> Result<()> {
     let bm = BridgeManager {};
     let network = bm.create_network("test").await?;
     let interface = bm.create_interface(&network, 1).await?;
@@ -384,7 +384,7 @@ impl Commands {
         )
     }
 
-    fn show_usage(&self, orig_args: &ArgMatches) -> Result<(), Error> {
+    fn show_usage(&self, orig_args: &ArgMatches) -> Result<()> {
         let stderr = std::io::stderr();
         let mut lock = stderr.lock();
         lock.write_all(orig_args.usage().as_bytes())?;
@@ -392,7 +392,7 @@ impl Commands {
         return Ok(());
     }
 
-    fn evaluate_config_subcommand(&self, orig_args: &ArgMatches) -> Result<(), Error> {
+    fn evaluate_config_subcommand(&self, orig_args: &ArgMatches) -> Result<()> {
         let (cmd, args) = orig_args.subcommand();
         let args = match args {
             Some(args) => args,
@@ -423,17 +423,17 @@ impl Commands {
                                 let guestport = args.value_of("GUESTPORT").unwrap_or("");
                                 match guestport.parse::<u16>() {
                                     Ok(guestport) => port_map(vm_name, hostport, guestport)?,
-                                    Err(e) => return Err(Error::from(e)),
+                                    Err(e) => return Err(anyhow!(e)),
                                 }
                             }
-                            Err(e) => return Err(Error::from(e)),
+                            Err(e) => return Err(anyhow!(e)),
                         }
                     }),
                     "unmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
                         let hostport = args.value_of("HOSTPORT").unwrap_or("");
                         match hostport.parse::<u16>() {
                             Ok(hostport) => port_unmap(vm_name, hostport)?,
-                            Err(e) => return Err(Error::from(e)),
+                            Err(e) => return Err(anyhow!(e)),
                         }
                     }),
                     _ => Ok(()),
@@ -443,7 +443,7 @@ impl Commands {
         }
     }
 
-    pub async fn evaluate(&self) -> Result<(), Error> {
+    pub async fn evaluate(&self) -> Result<()> {
         let app = self.get_clap();
         let matches = app.clone().get_matches();
         let (cmd, args) = matches.subcommand();
@@ -463,7 +463,7 @@ impl Commands {
                 let size = args.value_of("SIZE").unwrap_or("");
                 match size.parse::<u32>() {
                     Ok(u) => create(vm_name, u)?,
-                    Err(e) => return Err(Error::from(e)),
+                    Err(e) => return Err(anyhow!(e)),
                 }
             }),
             "delete" => Ok(if let Some(vm_name) = args.value_of("NAME") {

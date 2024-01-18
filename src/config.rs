@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::error::Error;
 use crate::ini_writer::*;
+use anyhow::{anyhow, Result};
 use ini::ini;
 use std::io::Write;
 
@@ -35,7 +35,7 @@ impl Default for Configuration {
     }
 }
 
-fn to_u32(opt: String) -> Result<u32, Error> {
+fn to_u32(opt: String) -> Result<u32> {
     Ok(opt.parse::<u32>()?)
 }
 
@@ -101,7 +101,7 @@ impl Configuration {
         }
     }
 
-    pub fn to_file(&self, filename: &str) -> Result<(), Error> {
+    pub fn to_file(&self, filename: &str) -> Result<()> {
         let mut f = std::fs::File::create(filename)?;
         f.write_all(to_ini(&self.to_ini()).as_bytes())?;
 
@@ -136,19 +136,19 @@ impl Configuration {
         ini
     }
 
-    pub fn valid(&self) -> Result<(), Error> {
+    pub fn valid(&self) -> Result<()> {
         if self.memory == 0 {
-            return Err(Error::new("No memory value set"));
+            return Err(anyhow!("No memory value set"));
         }
 
         if self.cpus == 0 {
-            return Err(Error::new("No cpus value set"));
+            return Err(anyhow!("No cpus value set"));
         }
 
         Ok(())
     }
 
-    pub fn check_ports(&self) -> Result<(), Error> {
+    pub fn check_ports(&self) -> Result<()> {
         Ok(())
     }
 
@@ -160,7 +160,7 @@ impl Configuration {
         self.ports.remove(&hostport);
     }
 
-    pub fn set_machine_value(&mut self, key: &str, value: &str) -> Result<(), Error> {
+    pub fn set_machine_value(&mut self, key: &str, value: &str) -> Result<()> {
         match key {
             "memory" => {
                 self.memory = to_u32(String::from(value))?;
@@ -182,7 +182,7 @@ impl Configuration {
                 self.cpu_type = String::from(value);
                 Ok(())
             }
-            _ => Err(Error::new("key does not exist")),
+            _ => Err(anyhow!("key does not exist")),
         }
     }
 }

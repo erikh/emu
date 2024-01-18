@@ -1,6 +1,6 @@
-use crate::error::Error;
 use crate::launcher;
 use crate::storage::SystemdStorage;
+use anyhow::{anyhow, Result};
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
@@ -60,7 +60,7 @@ impl Systemd {
         }
     }
 
-    fn template(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<String, Error> {
+    fn template(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<String> {
         let mut t = TinyTemplate::new();
         t.add_template("systemd", SYSTEMD_UNIT)?;
         let args = self.emu.args(vm_name, rc)?;
@@ -68,17 +68,17 @@ impl Systemd {
         let data = Data::new(String::from(vm_name), self.emu.bin()?, args);
         match t.render("systemd", &data) {
             Ok(x) => Ok(x),
-            Err(e) => Err(Error::from(e)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
-    pub fn write(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<(), Error> {
+    pub fn write(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<()> {
         let path = self.systemd_storage.service_filename(vm_name)?;
         let template = self.template(vm_name, rc)?;
 
         match std::fs::write(path, template) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Error::from(e)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 }

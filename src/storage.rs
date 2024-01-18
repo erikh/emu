@@ -1,5 +1,5 @@
 use crate::config::Configuration;
-use crate::error::Error;
+use anyhow::{anyhow, Result};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -26,29 +26,29 @@ impl SystemdStorage {
         }
     }
 
-    pub fn init(&self) -> Result<(), Error> {
+    pub fn init(&self) -> Result<()> {
         Ok(std::fs::create_dir_all(&self.basedir)?)
     }
 
-    pub fn service_filename(&self, vm_name: &str) -> Result<String, Error> {
+    pub fn service_filename(&self, vm_name: &str) -> Result<String> {
         if !self.storage.valid_filename(vm_name) {
-            return Err(Error::new("invalid vm name"));
+            return Err(anyhow!("invalid vm name"));
         }
 
         let path = self.basedir.join(format!("{}.emu.service", vm_name));
         Ok(String::from(path.to_str().unwrap()))
     }
 
-    pub fn remove(&self, vm_name: &str) -> Result<(), Error> {
+    pub fn remove(&self, vm_name: &str) -> Result<()> {
         let path = self.service_filename(vm_name)?;
 
         match std::fs::remove_file(path) {
             Ok(_) => Ok(()),
-            Err(e) => Err(Error::from(e)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
-    pub fn list(&self) -> Result<Vec<String>, Error> {
+    pub fn list(&self) -> Result<Vec<String>> {
         let mut v: Vec<String> = Vec::new();
         for item in std::fs::read_dir(&self.basedir)? {
             match item {
@@ -67,15 +67,15 @@ impl SystemdStorage {
 
 pub trait StorageHandler: fmt::Debug {
     fn base_path(&self) -> String;
-    fn vm_root(&self, name: &str) -> Result<String, Error>;
-    fn monitor_path(&self, vm_name: &str) -> Result<String, Error>;
-    fn config(&self, vm_name: &str) -> Result<Configuration, Error>;
-    fn write_config(&self, vm_name: &str, config: Configuration) -> Result<(), Error>;
+    fn vm_root(&self, name: &str) -> Result<String>;
+    fn monitor_path(&self, vm_name: &str) -> Result<String>;
+    fn config(&self, vm_name: &str) -> Result<Configuration>;
+    fn write_config(&self, vm_name: &str, config: Configuration) -> Result<()>;
     fn vm_exists(&self, name: &str) -> bool;
-    fn vm_list(&self) -> Result<Vec<String>, Error>;
-    fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error>;
+    fn vm_list(&self) -> Result<Vec<String>>;
+    fn vm_path(&self, name: &str, filename: &str) -> Result<String>;
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
-    fn create_monitor(&self, vm_name: &str) -> Result<(), Error>;
+    fn create_monitor(&self, vm_name: &str) -> Result<()>;
     fn valid_filename(&self, name: &str) -> bool;
 }
 
@@ -106,33 +106,33 @@ impl StorageHandler for DirectoryStorageHandler {
         return self.basedir.to_string();
     }
 
-    fn create_monitor(&self, vm_name: &str) -> Result<(), Error> {
+    fn create_monitor(&self, vm_name: &str) -> Result<()> {
         match self.monitor_path(vm_name) {
             Ok(_) => Ok(()),
             Err(e) => return Err(e),
         }
     }
 
-    fn vm_root(&self, name: &str) -> Result<String, Error> {
+    fn vm_root(&self, name: &str) -> Result<String> {
         if !self.valid_filename(name) {
-            return Err(Error::new("path contains invalid characters"));
+            return Err(anyhow!("path contains invalid characters"));
         }
 
         match PathBuf::from(self.base_path()).join(name).to_str() {
-            None => Err(Error::new("could not manage path")),
+            None => Err(anyhow!("could not manage path")),
             Some(s) => Ok(String::from(s)),
         }
     }
 
-    fn monitor_path(&self, vm_name: &str) -> Result<String, Error> {
+    fn monitor_path(&self, vm_name: &str) -> Result<String> {
         if let Some(path) = PathBuf::from(self.vm_root(vm_name)?).join("mon").to_str() {
             Ok(String::from(path))
         } else {
-            Err(Error::new("could not calculate monitor path"))
+            Err(anyhow!("could not calculate monitor path"))
         }
     }
 
-    fn config(&self, vm_name: &str) -> Result<Configuration, Error> {
+    fn config(&self, vm_name: &str) -> Result<Configuration> {
         if let Some(path) = PathBuf::from(self.vm_root(vm_name)?)
             .join("config")
             .to_str()
@@ -143,14 +143,14 @@ impl StorageHandler for DirectoryStorageHandler {
         }
     }
 
-    fn write_config(&self, vm_name: &str, config: Configuration) -> Result<(), Error> {
+    fn write_config(&self, vm_name: &str, config: Configuration) -> Result<()> {
         if let Some(path) = PathBuf::from(self.vm_root(vm_name)?)
             .join("config")
             .to_str()
         {
             config.to_file(path)
         } else {
-            Err(Error::new("cannot construct path for vm"))
+            Err(anyhow!("cannot construct path for vm"))
         }
     }
 
@@ -164,7 +164,7 @@ impl StorageHandler for DirectoryStorageHandler {
         }
     }
 
-    fn vm_list(&self) -> Result<Vec<String>, Error> {
+    fn vm_list(&self) -> Result<Vec<String>> {
         match std::fs::read_dir(self.base_path()) {
             Ok(rd) => {
                 let mut ret: Vec<String> = Vec::new();
@@ -175,24 +175,22 @@ impl StorageHandler for DirectoryStorageHandler {
                             // ignored. Maybe when I give a bigger shit.
                             match dir.file_name().into_string() {
                                 Ok(s) => ret.push(s),
-                                Err(_) => return Err(Error::new("could not iterate base directory; some vm filenames are invalid")),
+                                Err(_) => return Err(anyhow!("could not iterate base directory; some vm filenames are invalid")),
                             }
                         }
-                        Err(e) => {
-                            return Err(Error::new(&format!("could not iterate directory: {}", e)))
-                        }
+                        Err(e) => return Err(anyhow!("could not iterate directory: {}", e)),
                     }
                 }
 
                 Ok(ret)
             }
-            Err(e) => Err(Error::from(e)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
-    fn vm_path(&self, name: &str, filename: &str) -> Result<String, Error> {
+    fn vm_path(&self, name: &str, filename: &str) -> Result<String> {
         if !self.valid_filename(name) || !self.valid_filename(filename) {
-            return Err(Error::new("path contains invalid characters"));
+            return Err(anyhow!("path contains invalid characters"));
         }
 
         match PathBuf::from(self.base_path())
@@ -200,7 +198,7 @@ impl StorageHandler for DirectoryStorageHandler {
             .join(filename)
             .to_str()
         {
-            None => Err(Error::new("could not construct path")),
+            None => Err(anyhow!("could not construct path")),
             Some(s) => Ok(String::from(s)),
         }
     }

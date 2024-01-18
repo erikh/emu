@@ -7,14 +7,21 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tinytemplate = "1.1"
-serde = { version = "1.0", features = ["derive"] }
-dirs = "3.0"
+tinytemplate = "*"
+serde = { version = "*", features = [ "derive" ] }
+dirs = "*"
+anyhow = "^1"
 clap = "2"
-tokio = { version = "0.2", features = [ "full" ] }
-rtnetlink = "0.6"
-async-trait = "0.1"
-futures = ">=0"
-serde_json = ">=0"
-ini = "1.3"
-fork = "0.1"
+tokio = { version = "*", features = [ "full" ] }
+rtnetlink = "*"
+async-trait = "*"
+futures = "*"
+serde_json = "*"
+ini = "*"
+fork = "*"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 24
+opt-level = 3
