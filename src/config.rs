@@ -1,8 +1,7 @@
-use std::{collections::HashMap, io::Write};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, io::Write, path::PathBuf};
 
-use crate::ini_writer::*;
 use anyhow::{anyhow, Result};
-use ini::ini;
 
 const DEFAULT_CPU_TYPE: &str = "host";
 const DEFAULT_CPUS: u32 = 8;
@@ -10,141 +9,65 @@ const DEFAULT_MEMORY: u32 = 16384;
 const DEFAULT_VGA: &str = "virtio";
 const DEFAULT_IMAGE_INTERFACE: &str = "virtio";
 
-pub type PortMap = HashMap<u16, u16>;
+pub type PortMap = HashMap<String, u16>;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
+    pub machine: MachineConfiguration,
+    pub ports: PortMap,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MachineConfiguration {
     pub memory: u32, // megabytes
     pub cpus: u32,
     pub cpu_type: String,
     pub vga: String,
-    pub ports: PortMap,
     pub image_interface: String,
+}
+
+impl std::fmt::Display for Configuration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&toml::to_string_pretty(self).map_err(|_| std::fmt::Error::default())?)
+    }
 }
 
 impl Default for Configuration {
     fn default() -> Self {
         Configuration {
-            memory: DEFAULT_MEMORY,
-            cpus: DEFAULT_CPUS,
-            cpu_type: String::from(DEFAULT_CPU_TYPE),
-            vga: String::from(DEFAULT_VGA),
+            machine: MachineConfiguration {
+                memory: DEFAULT_MEMORY,
+                cpus: DEFAULT_CPUS,
+                cpu_type: String::from(DEFAULT_CPU_TYPE),
+                vga: String::from(DEFAULT_VGA),
+                image_interface: String::from(DEFAULT_IMAGE_INTERFACE),
+            },
             ports: HashMap::new(),
-            image_interface: String::from(DEFAULT_IMAGE_INTERFACE),
         }
     }
-}
-
-fn to_u32(opt: String) -> Result<u32> {
-    Ok(opt.parse::<u32>()?)
-}
-
-fn exists_or_default(
-    ini: &HashMap<String, HashMap<String, Option<String>>>,
-    section: &str,
-    key: &str,
-    default: &str,
-) -> String {
-    ini.get(section).map_or_else(
-        || default.to_string(),
-        |x| {
-            x.get(key).map_or_else(
-                || default.to_string(),
-                |y| y.clone().unwrap_or_else(|| default.to_string()),
-            )
-        },
-    )
-}
-
-fn get_ports(ini: &HashMap<String, HashMap<String, Option<String>>>) -> PortMap {
-    let mut pm = PortMap::new();
-
-    if ini.contains_key("ports") {
-        for (k, v) in ini["ports"].iter() {
-            pm.insert(
-                k.parse::<u16>().unwrap(),
-                v.clone().unwrap().parse::<u16>().unwrap(),
-            );
-        }
-    }
-
-    pm
 }
 
 impl Configuration {
-    pub fn from_file(filename: &str) -> Self {
-        let ini = match ini!(safe filename) {
-            Ok(ini) => ini,
-            Err(_) => return Configuration::default(),
-        };
-
-        Self {
-            cpu_type: exists_or_default(&ini, "machine", "cpu-type", DEFAULT_CPU_TYPE),
-            memory: to_u32(exists_or_default(
-                &ini,
-                "machine",
-                "memory",
-                &DEFAULT_MEMORY.to_string(),
-            ))
-            .unwrap(),
-            cpus: to_u32(exists_or_default(
-                &ini,
-                "machine",
-                "cpus",
-                &DEFAULT_CPUS.to_string(),
-            ))
-            .unwrap(),
-            vga: exists_or_default(&ini, "machine", "vga", DEFAULT_VGA),
-            image_interface: exists_or_default(
-                &ini,
-                "machine",
-                "image-interface",
-                DEFAULT_IMAGE_INTERFACE,
-            ),
-            ports: get_ports(&ini),
-        }
+    pub fn from_file(filename: PathBuf) -> Self {
+        std::fs::read_to_string(filename).map_or_else(
+            |_| Self::default(),
+            |x| toml::from_str(&x).unwrap_or_default(),
+        )
     }
 
     pub fn to_file(&self, filename: &str) -> Result<()> {
         let mut f = std::fs::File::create(filename)?;
-        f.write_all(to_ini(&self.to_ini()).as_bytes())?;
+        f.write_all(self.to_string().as_bytes())?;
 
         Ok(())
     }
 
-    pub fn to_string(&self) -> String {
-        to_ini(&self.to_ini())
-    }
-
-    pub fn to_ini(&self) -> Ini {
-        let mut ini = Ini::new();
-        let mut machine = HashMap::new();
-        let mut ports = HashMap::new();
-
-        machine.insert(String::from("memory"), Some(self.memory.to_string()));
-        machine.insert(String::from("cpus"), Some(self.cpus.to_string()));
-        machine.insert(String::from("vga"), Some(self.vga.clone()));
-        machine.insert(
-            String::from("image-interface"),
-            Some(self.image_interface.clone()),
-        );
-        machine.insert(String::from("cpu-type"), Some(self.cpu_type.clone()));
-        ini.insert(String::from("machine"), machine);
-
-        for (host, guest) in self.ports.clone() {
-            ports.insert(host.to_string(), Some(guest.to_string()));
-        }
-
-        ini.insert(String::from("ports"), ports);
-
-        ini
-    }
-
     pub fn valid(&self) -> Result<()> {
-        if self.memory == 0 {
+        if self.machine.memory == 0 {
             return Err(anyhow!("No memory value set"));
         }
 
-        if self.cpus == 0 {
+        if self.machine.cpus == 0 {
             return Err(anyhow!("No cpus value set"));
         }
 
@@ -156,33 +79,33 @@ impl Configuration {
     }
 
     pub fn map_port(&mut self, hostport: u16, guestport: u16) {
-        self.ports.insert(hostport, guestport);
+        self.ports.insert(hostport.to_string(), guestport);
     }
 
     pub fn unmap_port(&mut self, hostport: u16) {
-        self.ports.remove(&hostport);
+        self.ports.remove(&hostport.to_string());
     }
 
     pub fn set_machine_value(&mut self, key: &str, value: &str) -> Result<()> {
         match key {
             "memory" => {
-                self.memory = to_u32(String::from(value))?;
+                self.machine.memory = value.parse::<u32>()?;
                 Ok(())
             }
             "cpus" => {
-                self.cpus = to_u32(String::from(value))?;
+                self.machine.cpus = value.parse::<u32>()?;
                 Ok(())
             }
             "vga" => {
-                self.vga = String::from(value);
+                self.machine.vga = String::from(value);
                 Ok(())
             }
             "image-interface" => {
-                self.image_interface = String::from(value);
+                self.machine.image_interface = String::from(value);
                 Ok(())
             }
             "cpu-type" => {
-                self.cpu_type = String::from(value);
+                self.machine.cpu_type = String::from(value);
                 Ok(())
             }
             _ => Err(anyhow!("key does not exist")),

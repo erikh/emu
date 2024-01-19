@@ -17,9 +17,9 @@ rtnetlink = "*"
 async-trait = "*"
 futures = "*"
 serde_json = "*"
-ini = "*"
 fork = "*"
 byte-unit = "*"
+toml = "*"
 
 [profile.release]
 strip = true

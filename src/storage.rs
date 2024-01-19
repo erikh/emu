@@ -175,14 +175,9 @@ impl StorageHandler for DirectoryStorageHandler {
     }
 
     fn config(&self, vm_name: &str) -> Result<Configuration> {
-        if let Some(path) = PathBuf::from(self.vm_root(vm_name)?)
-            .join("config")
-            .to_str()
-        {
-            Ok(Configuration::from_file(path))
-        } else {
-            Ok(Configuration::default())
-        }
+        Ok(Configuration::from_file(
+            self.vm_root(vm_name)?.join("config"),
+        ))
     }
 
     fn write_config(&self, vm_name: &str, config: Configuration) -> Result<()> {

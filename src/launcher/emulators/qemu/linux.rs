@@ -81,20 +81,20 @@ impl launcher::Emulator for Emulator {
                     "-machine",
                     "accel=kvm",
                     "-vga",
-                    config.vga,
+                    config.machine.vga,
                     "-m",
-                    format!("{}M", config.memory),
+                    format!("{}M", config.machine.memory),
                     "-cpu",
-                    config.cpu_type,
+                    config.machine.cpu_type,
                     "-smp",
                     format!(
                         "cpus={},cores={},maxcpus={}",
-                        config.cpus, config.cpus, config.cpus
+                        config.machine.cpus, config.machine.cpus, config.machine.cpus
                     ),
                     "-drive",
                     format!(
                         "driver=qcow2,if={},file={},cache=none,media=disk,index=0",
-                        config.image_interface, img_path
+                        config.machine.image_interface, img_path
                     ),
                     "-nic",
                     format!("user{}", self.hostfwd_rules(vm_name, rc)?)
