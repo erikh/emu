@@ -35,7 +35,7 @@ impl SystemdStorage {
             return Err(anyhow!("invalid vm name"));
         }
 
-        let path = self.basedir.join(format!("{}.emu.service", vm_name));
+        let path = self.basedir.join(format!("emu.{}.service", vm_name));
         Ok(String::from(path.to_str().unwrap()))
     }
 
@@ -54,8 +54,13 @@ impl SystemdStorage {
             match item {
                 Ok(item) => {
                     let filename = String::from(item.file_name().to_str().unwrap());
-                    if filename.ends_with(".emu.service") {
-                        v.push(filename.replace(".emu.service", ""))
+                    if filename.starts_with("emu.") && filename.ends_with(".service") {
+                        v.push(
+                            filename
+                                .trim_start_matches("emu.")
+                                .trim_end_matches(".service")
+                                .to_string(),
+                        )
                     }
                 }
                 Err(_) => {}
