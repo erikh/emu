@@ -9,7 +9,7 @@ mod template;
 
 #[tokio::main]
 async fn main() {
-    if let Err(e) = commands::Commands::evaluate() {
+    if let Err(e) = commands::Commands::evaluate().await {
         println!("error: {}", e.to_string());
     }
 }

@@ -13,6 +13,11 @@ use std::{
     os::unix::net::UnixStream,
     path::PathBuf,
     process::{Command, Stdio},
+    sync::Arc,
+};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, Interest},
+    sync::Mutex,
 };
 
 pub(crate) fn list() -> Result<()> {
@@ -39,6 +44,76 @@ pub(crate) fn supervised() -> Result<()> {
         }
         Err(e) => Err(e),
     }
+}
+
+pub(crate) async fn nc(vm_name: &str, port: u16) -> Result<()> {
+    let dsh = DirectoryStorageHandler::default();
+    let config = dsh.config(vm_name)?;
+    if config.ports.contains_key(&port.to_string()) {
+        let (s, mut r) = tokio::sync::mpsc::unbounded_channel();
+        let (close_s, close_r) = tokio::sync::mpsc::unbounded_channel();
+        let close_r = Arc::new(Mutex::new(close_r));
+
+        let close_s2 = close_s.clone();
+        let close_r2 = close_r.clone();
+
+        tokio::spawn(async move {
+            let mut buf = [0_u8; 4096];
+            while let Ok(size) = tokio::io::stdin().read(&mut buf).await {
+                if size > 0 {
+                    s.send(buf[..size].to_vec()).unwrap();
+                } else {
+                    break;
+                }
+
+                if close_r2.lock().await.try_recv().is_ok() {
+                    return;
+                }
+            }
+            close_s2.send(()).unwrap();
+        });
+
+        let mut stream = tokio::net::TcpStream::connect(
+            format!("127.0.0.1:{}", port).parse::<std::net::SocketAddr>()?,
+        )
+        .await?;
+
+        let mut buf = [0_u8; 4096];
+        let interest = Interest::WRITABLE.clone();
+        let interest = interest.add(Interest::READABLE);
+        let interest = interest.add(Interest::ERROR);
+
+        loop {
+            let state = stream.ready(interest).await?;
+
+            if state.is_error() {
+                close_s.send(())?;
+                break;
+            }
+
+            if state.is_readable() {
+                while let Ok(size) = stream.try_read(&mut buf) {
+                    if size > 0 {
+                        tokio::io::stdout().write(&buf[..size]).await?;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            if state.is_writable() {
+                while let Ok(buf) = r.try_recv() {
+                    stream.write(&buf).await?;
+                }
+            }
+
+            if close_r.lock().await.try_recv().is_ok() {
+                break;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub(crate) fn ssh(vm_name: &str) -> Result<()> {

@@ -26,6 +26,13 @@ enum CommandType {
         /// Name of VM
         name: String,
     },
+    /// Open standard input to a port on the VM
+    NC {
+        /// Name of VM
+        name: String,
+        /// Port of VM
+        port: u16,
+    },
     /// Uses ssh_port configuration variable to SSH into the host
     SSH {
         /// Name of VM
@@ -143,7 +150,7 @@ enum ConfigPortSubcommand {
 }
 
 impl Commands {
-    pub fn evaluate() -> Result<()> {
+    pub async fn evaluate() -> Result<()> {
         let args = Self::parse();
 
         match args.command {
@@ -159,6 +166,7 @@ impl Commands {
                     ConfigPortSubcommand::Unmap { name, hostport } => port_unmap(&name, hostport),
                 },
             },
+            CommandType::NC { name, port } => nc(&name, port).await,
             CommandType::SSH { name } => ssh(&name),
             CommandType::Create { name, size } => create(&name, size),
             CommandType::Delete { name } => delete(&name),
