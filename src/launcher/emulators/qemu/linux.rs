@@ -75,7 +75,7 @@ impl launcher::Emulator for Emulator {
                 let mut v: Vec<String> = string_vec![
                     "-nodefaults",
                     "-chardev",
-                    format!("socket,server=on,wait=off,id=char0,path={}", mon),
+                    format!("socket,server=on,wait=off,id=char0,path={}", mon.display()),
                     "-mon",
                     "chardev=char0,mode=control,pretty=on",
                     "-machine",

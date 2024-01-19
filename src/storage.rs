@@ -66,9 +66,9 @@ impl SystemdStorage {
 }
 
 pub trait StorageHandler: fmt::Debug {
-    fn base_path(&self) -> String;
-    fn vm_root(&self, name: &str) -> Result<String>;
-    fn monitor_path(&self, vm_name: &str) -> Result<String>;
+    fn base_path(&self) -> PathBuf;
+    fn vm_root(&self, name: &str) -> Result<PathBuf>;
+    fn monitor_path(&self, vm_name: &str) -> Result<PathBuf>;
     fn config(&self, vm_name: &str) -> Result<Configuration>;
     fn write_config(&self, vm_name: &str, config: Configuration) -> Result<()>;
     fn vm_exists(&self, name: &str) -> bool;
@@ -132,19 +132,17 @@ impl StoragePath {
 
 #[derive(Debug, Clone)]
 pub struct DirectoryStorageHandler {
-    pub basedir: String,
+    pub basedir: PathBuf,
 }
 
 impl Default for DirectoryStorageHandler {
     fn default() -> Self {
         let dir = dirs::data_dir().unwrap_or(dirs::home_dir().unwrap());
-        let root = PathBuf::from(dir).join("emu");
+        let root = dir.join("emu");
 
         std::fs::create_dir_all(root.clone()).unwrap_or(());
 
-        Self {
-            basedir: String::from(root.to_str().unwrap()),
-        }
+        Self { basedir: root }
     }
 }
 
@@ -153,8 +151,8 @@ impl StorageHandler for DirectoryStorageHandler {
         !(name.contains("..") || name.contains(std::path::MAIN_SEPARATOR) || name.contains("\x00"))
     }
 
-    fn base_path(&self) -> String {
-        return self.basedir.to_string();
+    fn base_path(&self) -> PathBuf {
+        self.basedir.clone()
     }
 
     fn create_monitor(&self, vm_name: &str) -> Result<()> {
@@ -164,23 +162,16 @@ impl StorageHandler for DirectoryStorageHandler {
         }
     }
 
-    fn vm_root(&self, name: &str) -> Result<String> {
+    fn vm_root(&self, name: &str) -> Result<PathBuf> {
         if !self.valid_filename(name) {
             return Err(anyhow!("path contains invalid characters"));
         }
 
-        match PathBuf::from(self.base_path()).join(name).to_str() {
-            None => Err(anyhow!("could not manage path")),
-            Some(s) => Ok(String::from(s)),
-        }
+        Ok(self.base_path().join(name))
     }
 
-    fn monitor_path(&self, vm_name: &str) -> Result<String> {
-        if let Some(path) = PathBuf::from(self.vm_root(vm_name)?).join("mon").to_str() {
-            Ok(String::from(path))
-        } else {
-            Err(anyhow!("could not calculate monitor path"))
-        }
+    fn monitor_path(&self, vm_name: &str) -> Result<PathBuf> {
+        Ok(self.vm_root(vm_name)?.join("mon"))
     }
 
     fn config(&self, vm_name: &str) -> Result<Configuration> {
@@ -225,7 +216,7 @@ impl StorageHandler for DirectoryStorageHandler {
                             // in this case, filenames which cannot be converted to string are silently
                             // ignored. Maybe when I give a bigger shit.
                             match dir.file_name().into_string() {
-                                Ok(s) => ret.push(StoragePath{name: s, base: PathBuf::from(self.base_path())}),
+                                Ok(s) => ret.push(StoragePath{name: s, base: self.base_path()}),
                                 Err(_) => return Err(anyhow!("could not iterate base directory; some vm filenames are invalid")),
                             }
                         }
@@ -244,11 +235,7 @@ impl StorageHandler for DirectoryStorageHandler {
             return Err(anyhow!("path contains invalid characters"));
         }
 
-        match PathBuf::from(self.base_path())
-            .join(name)
-            .join(filename)
-            .to_str()
-        {
+        match self.base_path().join(name).join(filename).to_str() {
             None => Err(anyhow!("could not construct path")),
             Some(s) => Ok(String::from(s)),
         }
