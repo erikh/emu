@@ -2,6 +2,8 @@ use crate::{image::QEMU_IMG_NAME, launcher, storage::StorageHandler};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
+const QEMU_BIN_NAME: &str = "qemu-system-x86_64";
+
 macro_rules! append_vec {
     ( $v:expr, $( $x:expr ),* ) => {
         {
@@ -114,6 +116,6 @@ impl launcher::Emulator for Emulator {
     }
 
     fn bin(&self) -> Result<String> {
-        Ok("qemu-system-x86_64".to_string())
+        Ok(QEMU_BIN_NAME.to_string())
     }
 }
