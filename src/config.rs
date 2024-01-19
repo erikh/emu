@@ -44,11 +44,15 @@ fn exists_or_default(
     key: &str,
     default: &str,
 ) -> String {
-    if !ini.contains_key(section) || !ini[section].contains_key(key) {
-        return String::from(default);
-    }
-
-    ini[section][key].clone().unwrap()
+    ini.get(section).map_or_else(
+        || default.to_string(),
+        |x| {
+            x.get(key).map_or_else(
+                || default.to_string(),
+                |y| y.clone().unwrap_or_else(|| default.to_string()),
+            )
+        },
+    )
 }
 
 fn get_ports(ini: &HashMap<String, HashMap<String, Option<String>>>) -> PortMap {
