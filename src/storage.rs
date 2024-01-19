@@ -72,11 +72,62 @@ pub trait StorageHandler: fmt::Debug {
     fn config(&self, vm_name: &str) -> Result<Configuration>;
     fn write_config(&self, vm_name: &str, config: Configuration) -> Result<()>;
     fn vm_exists(&self, name: &str) -> bool;
-    fn vm_list(&self) -> Result<Vec<String>>;
+    fn vm_list(&self) -> Result<Vec<StoragePath>>;
     fn vm_path(&self, name: &str, filename: &str) -> Result<String>;
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
     fn create_monitor(&self, vm_name: &str) -> Result<()>;
     fn valid_filename(&self, name: &str) -> bool;
+}
+
+#[derive(Clone, Debug)]
+pub struct StoragePath {
+    name: String,
+    base: PathBuf,
+}
+
+impl std::fmt::Display for StoragePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&format!(
+            "{} ({:.2})",
+            self.name,
+            byte_unit::Byte::from_u128(self.size().unwrap() as u128)
+                .unwrap()
+                .get_appropriate_unit(byte_unit::UnitType::Decimal),
+        ))
+    }
+}
+
+impl StoragePath {
+    pub fn with_base(&self) -> PathBuf {
+        self.base.join(self.name.clone())
+    }
+
+    fn size(&self) -> Result<usize> {
+        let dir = std::fs::read_dir(self.with_base())?;
+        let mut total = 0;
+        let mut items = Vec::new();
+        let mut dirs = vec![dir];
+        while let Some(dir) = dirs.pop() {
+            for item in dir {
+                match item {
+                    Ok(item) => {
+                        let meta = item.metadata()?;
+                        if meta.is_file() {
+                            items.push(item);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        for item in items {
+            let meta = item.metadata()?;
+            total += meta.len() as usize;
+        }
+
+        Ok(total)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -164,17 +215,17 @@ impl StorageHandler for DirectoryStorageHandler {
         }
     }
 
-    fn vm_list(&self) -> Result<Vec<String>> {
+    fn vm_list(&self) -> Result<Vec<StoragePath>> {
         match std::fs::read_dir(self.base_path()) {
             Ok(rd) => {
-                let mut ret: Vec<String> = Vec::new();
+                let mut ret = Vec::new();
                 for dir in rd {
                     match dir {
                         Ok(dir) => {
                             // in this case, filenames which cannot be converted to string are silently
                             // ignored. Maybe when I give a bigger shit.
                             match dir.file_name().into_string() {
-                                Ok(s) => ret.push(s),
+                                Ok(s) => ret.push(StoragePath{name: s, base: PathBuf::from(self.base_path())}),
                                 Err(_) => return Err(anyhow!("could not iterate base directory; some vm filenames are invalid")),
                             }
                         }

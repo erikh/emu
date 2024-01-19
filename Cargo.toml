@@ -19,6 +19,7 @@ futures = "*"
 serde_json = "*"
 ini = "*"
 fork = "*"
+byte-unit = "*"
 
 [profile.release]
 strip = true
