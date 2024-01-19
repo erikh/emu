@@ -7,6 +7,7 @@ const DEFAULT_CPU_TYPE: &str = "host";
 const DEFAULT_CPUS: u32 = 8;
 const DEFAULT_MEMORY: u32 = 16384;
 const DEFAULT_VGA: &str = "virtio";
+const DEFAULT_SSH_PORT: u16 = 2222;
 const DEFAULT_IMAGE_INTERFACE: &str = "virtio";
 
 pub type PortMap = HashMap<String, u16>;
@@ -19,6 +20,7 @@ pub struct Configuration {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MachineConfiguration {
+    pub ssh_port: u16,
     pub memory: u32, // megabytes
     pub cpus: u32,
     pub cpu_type: String,
@@ -36,6 +38,7 @@ impl Default for Configuration {
     fn default() -> Self {
         Configuration {
             machine: MachineConfiguration {
+                ssh_port: DEFAULT_SSH_PORT,
                 memory: DEFAULT_MEMORY,
                 cpus: DEFAULT_CPUS,
                 cpu_type: String::from(DEFAULT_CPU_TYPE),

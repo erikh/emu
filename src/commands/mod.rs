@@ -26,6 +26,11 @@ enum CommandType {
         /// Name of VM
         name: String,
     },
+    /// Uses ssh_port configuration variable to SSH into the host
+    SSH {
+        /// Name of VM
+        name: String,
+    },
     /// Configure supervision of an already existing VM
     Supervise {
         /// ISO of CD-ROM image -- will be embedded into supervision
@@ -154,6 +159,7 @@ impl Commands {
                     ConfigPortSubcommand::Unmap { name, hostport } => port_unmap(&name, hostport),
                 },
             },
+            CommandType::SSH { name } => ssh(&name),
             CommandType::Create { name, size } => create(&name, size),
             CommandType::Delete { name } => delete(&name),
             CommandType::Supervise { cdrom, name } => supervise(&name, cdrom),

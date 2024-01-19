@@ -41,6 +41,25 @@ pub(crate) fn supervised() -> Result<()> {
     }
 }
 
+pub(crate) fn ssh(vm_name: &str) -> Result<()> {
+    let dsh = DirectoryStorageHandler::default();
+    let mut cmd = Command::new("ssh");
+    if cmd
+        .args(vec![
+            "-p",
+            &dsh.config(vm_name)?.machine.ssh_port.to_string(),
+            "localhost",
+        ])
+        .spawn()?
+        .wait()?
+        .success()
+    {
+        Ok(())
+    } else {
+        Err(anyhow!("SSH failed with non-zero status"))
+    }
+}
+
 pub(crate) fn create(vm_name: &str, size: usize) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
