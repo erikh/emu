@@ -1,7 +1,7 @@
 use crate::storage::DirectoryStorageHandler;
 use anyhow::{anyhow, Result};
 use fork::{daemon, Fork};
-use std::process::Command;
+use std::{path::PathBuf, process::Command};
 
 #[macro_export]
 macro_rules! string_vec {
@@ -27,8 +27,8 @@ macro_rules! append_vec {
 }
 
 pub struct RuntimeConfig {
-    pub cdrom: Option<String>,
-    pub extra_disk: Option<String>,
+    pub cdrom: Option<PathBuf>,
+    pub extra_disk: Option<PathBuf>,
     pub headless: bool,
     pub dsh: DirectoryStorageHandler,
 }
@@ -115,6 +115,7 @@ pub mod emulators {
             use crate::launcher;
             use crate::storage::StorageHandler;
             use anyhow::{anyhow, Result};
+            use std::path::PathBuf;
 
             pub struct Emulator {}
 
@@ -137,14 +138,17 @@ pub mod emulators {
                 fn cdrom_rules(
                     &self,
                     v: &mut Vec<String>,
-                    disk: Option<String>,
+                    disk: Option<PathBuf>,
                     index: u8,
                 ) -> Result<()> {
                     if let Some(cd) = disk {
                         match std::fs::metadata(&cd) {
                             Ok(_) => {
                                 append_vec!(v, "-drive");
-                                append_vec!(v, format!("file={},media=cdrom,index={}", cd, index));
+                                append_vec!(
+                                    v,
+                                    format!("file={},media=cdrom,index={}", cd.display(), index)
+                                );
                             }
                             Err(e) => return Err(anyhow!("error locating cdrom file: {}", e)),
                         }

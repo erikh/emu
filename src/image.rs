@@ -1,14 +1,17 @@
 use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use anyhow::{anyhow, Result};
-use std::process::{Command, Stdio};
+use std::{
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 pub const QEMU_IMG_PATH: &str = "qemu-img";
 pub const QEMU_IMG_NAME: &str = "qemu.qcow2";
 pub const QEMU_IMG_DEFAULT_FORMAT: &str = "qcow2";
 
 pub trait Imager {
-    fn import(&self, name: &str, orig_file: &str, format: &str) -> Result<()>;
-    fn create(&self, name: &str, gbs: u32) -> Result<()>;
+    fn import(&self, name: &str, orig_file: PathBuf, format: &str) -> Result<()>;
+    fn create(&self, name: &str, gbs: usize) -> Result<()>;
     fn clone(&self, orig: &str, new: &str) -> Result<()>;
 }
 
@@ -33,7 +36,7 @@ impl Default for QEmuImager {
 }
 
 impl Imager for QEmuImager {
-    fn import(&self, name: &str, orig_file: &str, format: &str) -> Result<()> {
+    fn import(&self, name: &str, orig_file: PathBuf, format: &str) -> Result<()> {
         if self.storage.vm_exists(name) {
             return Err(anyhow!(
                 "file already exists, please delete the original vm",
@@ -52,7 +55,7 @@ impl Imager for QEmuImager {
                 format,
                 "-O",
                 "qcow2",
-                orig_file,
+                orig_file.to_str().unwrap(),
                 &self.storage.vm_path(name, QEMU_IMG_NAME)?,
             ])
             .status();
@@ -94,7 +97,7 @@ impl Imager for QEmuImager {
         }
     }
 
-    fn create(&self, name: &str, gbs: u32) -> Result<()> {
+    fn create(&self, name: &str, gbs: usize) -> Result<()> {
         if self.storage.vm_path_exists(name, QEMU_IMG_NAME) {
             return Err(anyhow!(
                 "filename already exists; did you already create this vm?",

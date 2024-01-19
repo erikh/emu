@@ -8,14 +8,11 @@ mod qmp;
 mod storage;
 mod template;
 
-#[macro_use]
-extern crate clap;
 use tokio;
 
 #[tokio::main]
 async fn main() {
-    let c = commands::Commands {};
-    if let Err(e) = c.evaluate().await {
+    if let Err(e) = commands::Commands::evaluate() {
         println!("error: {}", e.to_string());
     }
 }

@@ -1,14 +1,13 @@
-use std::io::Write;
 use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use clap::ArgMatches;
+use clap::{Parser, Subcommand};
 
 use crate::image::{Imager, QEmuImager};
 use crate::launcher::emulators::qemu;
 use crate::launcher::emulators::qemu::linux;
 use crate::launcher::*;
-use crate::network::{BridgeManager, NetworkManager};
 use crate::qmp::{Client, UnixSocket};
 use crate::storage::{DirectoryStorageHandler, StorageHandler, SystemdStorage};
 use crate::template::Systemd;
@@ -40,7 +39,7 @@ fn supervised() -> Result<()> {
     }
 }
 
-fn create(vm_name: &str, size: u32) -> Result<()> {
+fn create(vm_name: &str, size: usize) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
@@ -87,7 +86,7 @@ fn delete(vm_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<()> {
+fn supervise(vm_name: &str, cdrom: Option<PathBuf>) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
@@ -103,10 +102,7 @@ fn supervise(vm_name: &str, cdrom: Option<&str>) -> Result<()> {
 
     let emu = linux::Emulator {};
     let rc = RuntimeConfig {
-        cdrom: match cdrom {
-            Some(x) => Some(String::from(x)),
-            None => None,
-        },
+        cdrom,
         dsh,
         extra_disk: None,
         headless: true,
@@ -163,8 +159,8 @@ fn shutdown(vm_name: &str) -> Result<()> {
 
 fn run(
     vm_name: &str,
-    cdrom: Option<&str>,
-    extra_disk: Option<&str>,
+    cdrom: Option<PathBuf>,
+    extra_disk: Option<PathBuf>,
     detach: bool,
     headless: bool,
 ) -> Result<()> {
@@ -175,14 +171,8 @@ fn run(
 
     let emu = linux::Emulator {};
     let rc = RuntimeConfig {
-        cdrom: match cdrom {
-            Some(x) => Some(String::from(x)),
-            None => None,
-        },
-        extra_disk: match extra_disk {
-            Some(x) => Some(String::from(x)),
-            None => None,
-        },
+        cdrom,
+        extra_disk,
         headless,
         dsh,
     };
@@ -202,7 +192,7 @@ fn run(
     }
 }
 
-fn import(vm_name: &str, from_file: &str, format: &str) -> Result<()> {
+fn import(vm_name: &str, from_file: PathBuf, format: &str) -> Result<()> {
     let imager = QEmuImager::default();
     imager.import(vm_name, from_file, format)
 }
@@ -273,240 +263,180 @@ fn qmp(vm_name: &str, command: &str, args: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-async fn network_test() -> Result<()> {
-    let bm = BridgeManager {};
-    let network = bm.create_network("test").await?;
-    let interface = bm.create_interface(&network, 1).await?;
-    bm.bind(&network, &interface).await?;
-    println!("{}", bm.exists_network(&network).await?);
-    println!("{}", bm.exists_interface(&interface).await?);
-    bm.unbind(&interface).await?;
-    bm.delete_interface(&interface).await?;
-    bm.delete_network(&network).await?;
-    println!("{}", bm.exists_network(&network).await?);
-    println!("{}", bm.exists_interface(&interface).await?);
-
-    Ok(println!("{:?}", interface))
+#[derive(Debug, Parser, Clone)]
+#[command(author, version, about, long_about=None)]
+pub struct Commands {
+    #[command(subcommand)]
+    command: CommandType,
 }
 
-pub struct Commands {}
+#[derive(Debug, Subcommand, Clone)]
+enum CommandType {
+    /// Create vm with a sized image
+    Create {
+        /// Name of VM
+        name: String,
+        /// Size in GB of VM image
+        size: usize,
+    },
+    /// Delete existing vm
+    Delete {
+        /// Name of VM
+        name: String,
+    },
+    /// Configure supervision of an already existing VM
+    Supervise {
+        /// ISO of CD-ROM image -- will be embedded into supervision
+        #[arg(short = 'c')]
+        cdrom: Option<PathBuf>,
+        /// Name of VM
+        name: String,
+    },
+    /// Remove supervision of an already existing vm
+    Unsupervise {
+        /// Name of VM
+        name: String,
+    },
+    /// Just run a pre-created VM; no systemd involved
+    Run {
+        /// Run without a video window
+        #[arg(short = 'e', long, default_value = "false")]
+        headless: bool,
+        /// Do not wait for qemu to exit
+        #[arg(short, long, default_value = "false")]
+        detach: bool,
+        /// ISO of CD-ROM image
+        #[arg(short, long)]
+        cdrom: Option<PathBuf>,
+        /// Supply an extra ISO image (useful for windows installations)
+        #[arg(long = "extra")]
+        extra_disk: Option<PathBuf>,
+        /// Name of VM
+        name: String,
+    },
+    /// Gracefully shutdown a pre-created VM
+    Shutdown {
+        /// Name of VM
+        name: String,
+    },
+    /// Issue QMP commands to the guest
+    QMP {
+        /// Name of VM
+        name: String,
+        /// Command to issue
+        command: String,
+        /// Arguments to send for command, JSON literal in single argument
+        arguments: Option<String>,
+    },
+    /// Yield a list of VMs, one on each line
+    List,
+    /// Yield a list of supervised VMs, one on each line
+    Supervised,
+    /// Clone one VM to another
+    Clone {
+        /// VM to clone from
+        from: String,
+        /// VM to clone to
+        to: String,
+    },
+    /// Import a VM from a VM image file
+    Import {
+        /// Format of incoming image
+        #[arg(short, long, required = true)]
+        format: String,
+        /// VM to import to
+        name: String,
+        /// VM image to import from
+        from_file: PathBuf,
+    },
+    /// Show and manipulate VM configuration
+    #[command(subcommand)]
+    Config(ConfigSubcommand),
+}
+
+#[derive(Debug, Subcommand, Clone)]
+enum ConfigSubcommand {
+    /// Show the written+inferred configuration for a VM
+    Show {
+        /// Name of VM
+        name: String,
+    },
+    /// Set a value int the configuration; type-safe
+    Set {
+        /// Name of VM
+        name: String,
+        /// Name of key to set
+        key: String,
+        /// Value of key to set
+        value: String,
+    },
+    /// Adjust port mappings
+    #[command(subcommand)]
+    Port(ConfigPortSubcommand),
+}
+
+#[derive(Debug, Subcommand, Clone)]
+enum ConfigPortSubcommand {
+    /// Add a port mapping from localhost:<HOSTPORT> -> <GUEST IP>:<GUESTPORT>
+    Map {
+        /// Name of VM
+        name: String,
+        /// Port on localhost to map to guest remote IP
+        hostport: u16,
+        /// Port on guest to expose
+        guestport: u16,
+    },
+    /// Undo a port mapping
+    Unmap {
+        /// Name of VM
+        name: String,
+        /// Port on localhost mapped to guest
+        hostport: u16,
+    },
+}
 
 impl Commands {
-    fn get_clap(&self) -> clap::App<'static, 'static> {
-        clap::clap_app!(emu =>
-            (version: "0.1.0")
-            (author: "Erik Hollensbe <github@hollensbe.org>")
-            (about: "Control qemu & more")
-            (@subcommand create =>
-                (about: "Create vm with a sized image")
-                (@arg NAME: +required "Name of VM")
-                (@arg SIZE: +required "Size in GB of VM image")
-            )
-            (@subcommand delete =>
-                (about: "Delete existing vm")
-                (@arg NAME: +required "Name of VM")
-            )
-            (@subcommand supervise =>
-                (about: "Configure supervision of an already existing VM")
-                (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image -- will be embedded into supervision")
-                (@arg NAME: +required "Name of VM")
-            )
-            (@subcommand unsupervise =>
-                (about: "Remove supervision of an already existing VM")
-                (@arg NAME: +required "Name of VM")
-            )
-            (@subcommand run =>
-                (about: "Just run a pre-created VM; no systemd involved")
-                (@arg headless: -e --headless "Run without a video window")
-                (@arg detach: -d --detach "Do not wait for qemu to exit")
-                (@arg cdrom: -c --cdrom +takes_value "ISO of CD-ROM image")
-                (@arg extra_disk: --extra +takes_value "Supply an extra ISO image (useful for windows installations)")
-                (@arg NAME: +required "Name of VM")
-            )
-            (@subcommand shutdown =>
-                (about: "Gracefully shutdown a pre-created VM.")
-                (@arg NAME: +required "Name of VM")
-            )
-            (@subcommand qmp =>
-                (about: "Issue QMP commands to the guest.")
-                (@arg NAME: +required "Name of VM")
-                (@arg COMMAND: +required "Command to issue")
-                (@arg ARGUMENTS: "Arguments to send for command, JSON literal")
-            )
-            (@subcommand list =>
-                (about: "Yield a list of VMs, one on each line")
-            )
-            (@subcommand supervised =>
-                (about: "Yield a list of supervised VMs, one on each line")
-            )
-            (@subcommand clone =>
-                (about: "Clone one vm to another")
-                (@arg FROM: +required "VM to clone from")
-                (@arg TO: +required "VM to clone to")
-            )
-            (@subcommand import =>
-                (about: "Import a VM from a VM image file")
-                (@arg format: -f --format +takes_value +required "Format of incoming image")
-                (@arg NAME: +required "VM to import to")
-                (@arg FROM_FILE: +required "VM image to import from")
-            )
-            (@subcommand config =>
-                (about: "Show and manipulate VM configuration")
-                (@subcommand show =>
-                    (about: "Show the written+inferred configuration for a VM")
-                    (@arg NAME: +required "Name of VM")
-                )
-                (@subcommand set =>
-                    (about: "Set a value in the configuration; type-safe")
-                    (@arg NAME: +required "Name of VM")
-                    (@arg KEY: +required "Name of key to set")
-                    (@arg VALUE: +required "Value of key to set")
-                )
-                (@subcommand port =>
-                    (about: "Adjust port mappings")
+    pub fn evaluate() -> Result<()> {
+        let args = Self::parse();
 
-                    (@subcommand map =>
-                        (about: "Add a port mapping from host -> guest")
-                        (@arg NAME: +required "Name of VM")
-                        (@arg HOSTPORT: +required "Port on localhost to map to guest")
-                        (@arg GUESTPORT: +required "Port on guest to expose")
-                    )
-                    (@subcommand unmap =>
-                        (about: "Undo a port mapping")
-                        (@arg NAME: +required "Name of VM")
-                        (@arg HOSTPORT: +required "Port on localhost to map to guest")
-                    )
-                )
-            )
-            // (@subcommand network_test =>
-            //     (about: "you have a development build! :) p.s. don't run this")
-            // )
-        )
-    }
-
-    fn show_usage(&self, orig_args: &ArgMatches) -> Result<()> {
-        let stderr = std::io::stderr();
-        let mut lock = stderr.lock();
-        lock.write_all(orig_args.usage().as_bytes())?;
-        lock.write_all(b"\n\n")?;
-        return Ok(());
-    }
-
-    fn evaluate_config_subcommand(&self, orig_args: &ArgMatches) -> Result<()> {
-        let (cmd, args) = orig_args.subcommand();
-        let args = match args {
-            Some(args) => args,
-            None => return self.show_usage(orig_args),
-        };
-
-        match cmd {
-            "show" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                show_config(vm_name)?
-            }),
-            "set" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                let key = args.value_of("KEY").unwrap();
-                let value = args.value_of("VALUE").unwrap();
-                config_set(vm_name, key, value)?
-            }),
-            "port" => {
-                let (cmd, portargs) = args.subcommand();
-                let args = match portargs {
-                    Some(args) => args,
-                    None => return self.show_usage(args),
-                };
-
-                match cmd {
-                    "map" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
-                        match hostport.parse::<u16>() {
-                            Ok(hostport) => {
-                                let guestport = args.value_of("GUESTPORT").unwrap_or("");
-                                match guestport.parse::<u16>() {
-                                    Ok(guestport) => port_map(vm_name, hostport, guestport)?,
-                                    Err(e) => return Err(anyhow!(e)),
-                                }
-                            }
-                            Err(e) => return Err(anyhow!(e)),
-                        }
-                    }),
-                    "unmap" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                        let hostport = args.value_of("HOSTPORT").unwrap_or("");
-                        match hostport.parse::<u16>() {
-                            Ok(hostport) => port_unmap(vm_name, hostport)?,
-                            Err(e) => return Err(anyhow!(e)),
-                        }
-                    }),
-                    _ => Ok(()),
-                }
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn evaluate(&self) -> Result<()> {
-        let app = self.get_clap();
-        let matches = app.clone().get_matches();
-        let (cmd, args) = matches.subcommand();
-        let args = match args {
-            Some(args) => args,
-            None => {
-                let stderr = std::io::stderr();
-                let mut lock = stderr.lock();
-                app.clone().write_long_help(&mut lock)?;
-                lock.write_all(b"\n\n")?;
-                return Ok(());
-            }
-        };
-
-        match cmd {
-            "create" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                let size = args.value_of("SIZE").unwrap_or("");
-                match size.parse::<u32>() {
-                    Ok(u) => create(vm_name, u)?,
-                    Err(e) => return Err(anyhow!(e)),
-                }
-            }),
-            "delete" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                delete(vm_name)?
-            }),
-            "supervise" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                supervise(vm_name, args.value_of("cdrom"))?
-            }),
-            "unsupervise" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                unsupervise(vm_name)?
-            }),
-            "run" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                run(
-                    vm_name,
-                    args.value_of("cdrom"),
-                    args.value_of("extra_disk"),
-                    args.is_present("detach"),
-                    args.is_present("headless"),
-                )?
-            }),
-            "list" => list(),
-            "shutdown" => Ok(if let Some(vm_name) = args.value_of("NAME") {
-                shutdown(vm_name)?
-            }),
-            "qmp" => qmp(
-                args.value_of("NAME").unwrap(),
-                args.value_of("COMMAND").unwrap(),
-                args.value_of("ARGUMENTS"),
-            ),
-            "supervised" => supervised(),
-            "config" => self.evaluate_config_subcommand(args),
-            "clone" => Ok(if let Some(from) = args.value_of("FROM") {
-                if let Some(to) = args.value_of("TO") {
-                    clone(from, to)?
-                }
-            }),
-            "import" => import(
-                args.value_of("NAME").unwrap(),
-                args.value_of("FROM_FILE").unwrap(),
-                args.value_of("format").unwrap(),
-            ),
-            "network_test" => network_test().await,
-            _ => Ok(()),
+        match args.command {
+            CommandType::Config(sub) => match sub {
+                ConfigSubcommand::Set { name, key, value } => config_set(&name, &key, &value),
+                ConfigSubcommand::Show { name } => show_config(&name),
+                ConfigSubcommand::Port(sub) => match sub {
+                    ConfigPortSubcommand::Map {
+                        name,
+                        hostport,
+                        guestport,
+                    } => port_map(&name, hostport, guestport),
+                    ConfigPortSubcommand::Unmap { name, hostport } => port_unmap(&name, hostport),
+                },
+            },
+            CommandType::Create { name, size } => create(&name, size),
+            CommandType::Delete { name } => delete(&name),
+            CommandType::Supervise { cdrom, name } => supervise(&name, cdrom),
+            CommandType::Unsupervise { name } => unsupervise(&name),
+            CommandType::Run {
+                headless,
+                detach,
+                cdrom,
+                extra_disk,
+                name,
+            } => run(&name, cdrom, extra_disk, detach, headless),
+            CommandType::List => list(),
+            CommandType::Shutdown { name } => shutdown(&name),
+            CommandType::QMP {
+                name,
+                command,
+                arguments,
+            } => qmp(&name, &command, arguments.as_deref()),
+            CommandType::Supervised => supervised(),
+            CommandType::Clone { from, to } => clone(&from, &to),
+            CommandType::Import {
+                format,
+                name,
+                from_file,
+            } => import(&name, from_file, &format),
         }
     }
 }
