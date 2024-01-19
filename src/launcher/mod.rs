@@ -48,13 +48,7 @@ impl Launcher {
         };
 
         match spawnres {
-            Ok(mut child) => {
-                if !detach {
-                    Ok(Some(child.wait()?))
-                } else {
-                    Ok(None)
-                }
-            }
+            Ok(mut child) => Ok(Some(child.wait()?)),
             Err(e) => Err(anyhow!(e)),
         }
     }
