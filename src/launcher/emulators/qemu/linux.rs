@@ -1,6 +1,4 @@
-use crate::image::QEMU_IMG_NAME;
-use crate::launcher;
-use crate::storage::StorageHandler;
+use crate::{image::QEMU_IMG_NAME, launcher, storage::StorageHandler};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
