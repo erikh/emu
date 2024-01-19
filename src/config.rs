@@ -41,9 +41,9 @@ impl Default for Configuration {
                 ssh_port: DEFAULT_SSH_PORT,
                 memory: DEFAULT_MEMORY,
                 cpus: DEFAULT_CPUS,
-                cpu_type: String::from(DEFAULT_CPU_TYPE),
-                vga: String::from(DEFAULT_VGA),
-                image_interface: String::from(DEFAULT_IMAGE_INTERFACE),
+                cpu_type: DEFAULT_CPU_TYPE.to_string(),
+                vga: DEFAULT_VGA.to_string(),
+                image_interface: DEFAULT_IMAGE_INTERFACE.to_string(),
             },
             ports: HashMap::new(),
         }
@@ -100,15 +100,15 @@ impl Configuration {
                 Ok(())
             }
             "vga" => {
-                self.machine.vga = String::from(value);
+                self.machine.vga = value.to_string();
                 Ok(())
             }
             "image-interface" => {
-                self.machine.image_interface = String::from(value);
+                self.machine.image_interface = value.to_string();
                 Ok(())
             }
             "cpu-type" => {
-                self.machine.cpu_type = String::from(value);
+                self.machine.cpu_type = value.to_string();
                 Ok(())
             }
             _ => Err(anyhow!("key does not exist")),

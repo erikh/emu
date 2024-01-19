@@ -1,6 +1,5 @@
 use crate::config::Configuration;
 use anyhow::{anyhow, Result};
-use std::fmt;
 use std::path::PathBuf;
 
 const SYSTEMD_USER_DIR: &str = "systemd/user";
@@ -36,7 +35,7 @@ impl SystemdStorage {
         }
 
         let path = self.basedir.join(format!("emu.{}.service", vm_name));
-        Ok(String::from(path.to_str().unwrap()))
+        Ok(path.to_str().unwrap().to_string())
     }
 
     pub fn remove(&self, vm_name: &str) -> Result<()> {
@@ -53,7 +52,7 @@ impl SystemdStorage {
         for item in std::fs::read_dir(&self.basedir)? {
             match item {
                 Ok(item) => {
-                    let filename = String::from(item.file_name().to_str().unwrap());
+                    let filename = item.file_name().to_str().unwrap().to_string();
                     if filename.starts_with("emu.") && filename.ends_with(".service") {
                         v.push(
                             filename
@@ -70,7 +69,7 @@ impl SystemdStorage {
     }
 }
 
-pub trait StorageHandler: fmt::Debug {
+pub trait StorageHandler: std::fmt::Debug {
     fn base_path(&self) -> PathBuf;
     fn vm_root(&self, name: &str) -> Result<PathBuf>;
     fn monitor_path(&self, vm_name: &str) -> Result<PathBuf>;
@@ -91,7 +90,7 @@ pub struct StoragePath {
 }
 
 impl std::fmt::Display for StoragePath {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!(
             "{} ({:.2})",
             self.name,
@@ -237,7 +236,7 @@ impl StorageHandler for DirectoryStorageHandler {
 
         match self.base_path().join(name).join(filename).to_str() {
             None => Err(anyhow!("could not construct path")),
-            Some(s) => Ok(String::from(s)),
+            Some(s) => Ok(s.to_string()),
         }
     }
 

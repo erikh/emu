@@ -114,6 +114,6 @@ impl launcher::Emulator for Emulator {
     }
 
     fn bin(&self) -> Result<String> {
-        Ok(String::from("/bin/qemu-system-x86_64"))
+        Ok("/bin/qemu-system-x86_64".to_string())
     }
 }

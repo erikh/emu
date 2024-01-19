@@ -36,11 +36,8 @@ impl Data {
             command,
             args,
             emu_path: match std::env::current_exe() {
-                Ok(path) => match path.to_str() {
-                    Some(path) => String::from(path),
-                    None => String::from(EMU_DEFAULT_PATH),
-                },
-                Err(_) => String::from(EMU_DEFAULT_PATH),
+                Ok(path) => path.to_str().unwrap().to_string(),
+                Err(_) => EMU_DEFAULT_PATH.to_string(),
             },
         }
     }
@@ -64,7 +61,7 @@ impl Systemd {
         t.add_template("systemd", SYSTEMD_UNIT)?;
         let args = self.emu.args(vm_name, rc)?;
 
-        let data = Data::new(String::from(vm_name), self.emu.bin()?, args);
+        let data = Data::new(vm_name.to_string(), self.emu.bin()?, args);
         match t.render("systemd", &data) {
             Ok(x) => Ok(x),
             Err(e) => Err(anyhow!(e)),

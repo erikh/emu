@@ -42,7 +42,7 @@ impl NetworkManager for BridgeManager {
                 let (c, handle, r) = connection;
                 tokio::spawn(c);
 
-                let bridge_name = String::from(NAME_PREFIX) + name;
+                let bridge_name = NAME_PREFIX.to_string() + name;
 
                 let resp = handle
                     .link()
