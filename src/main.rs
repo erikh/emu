@@ -8,8 +8,6 @@ mod qmp;
 mod storage;
 mod template;
 
-use tokio;
-
 #[tokio::main]
 async fn main() {
     if let Err(e) = commands::Commands::evaluate() {

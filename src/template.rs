@@ -1,5 +1,4 @@
-use crate::launcher;
-use crate::storage::SystemdStorage;
+use crate::{launcher, storage::SystemdStorage};
 use anyhow::{anyhow, Result};
 use serde::Serialize;
 use tinytemplate::TinyTemplate;

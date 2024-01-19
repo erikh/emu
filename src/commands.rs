@@ -1,16 +1,21 @@
-use std::os::unix::net::UnixStream;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::{
+    os::unix::net::UnixStream,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 use clap::{Parser, Subcommand};
 
-use crate::image::{Imager, QEmuImager};
-use crate::launcher::emulators::qemu;
-use crate::launcher::emulators::qemu::linux;
-use crate::launcher::*;
-use crate::qmp::{Client, UnixSocket};
-use crate::storage::{DirectoryStorageHandler, StorageHandler, SystemdStorage};
-use crate::template::Systemd;
+use crate::{
+    image::{Imager, QEmuImager},
+    launcher::emulators::qemu,
+    launcher::emulators::qemu::linux,
+    launcher::*,
+    qmp::{Client, UnixSocket},
+    storage::{DirectoryStorageHandler, StorageHandler, SystemdStorage},
+    template::Systemd,
+};
+
 use anyhow::{anyhow, Result};
 
 fn list() -> Result<()> {

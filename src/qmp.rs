@@ -1,6 +1,8 @@
 use serde_json::{json, Map, Result, Value};
-use std::io::{prelude::*, BufReader};
-use std::os::unix::net::UnixStream;
+use std::{
+    io::{prelude::*, BufReader},
+    os::unix::net::UnixStream,
+};
 
 pub struct UnixSocket {
     output: UnixStream,

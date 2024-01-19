@@ -1,9 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
 use crate::ini_writer::*;
 use anyhow::{anyhow, Result};
 use ini::ini;
-use std::io::Write;
 
 const DEFAULT_CPU_TYPE: &str = "host";
 const DEFAULT_CPUS: u32 = 8;
