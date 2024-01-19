@@ -14,14 +14,16 @@ macro_rules! append_vec {
     };
 }
 
-macro_rules! string_vec {
+macro_rules! into_vec {
     ( $( $x:expr ),* ) => {
         {
             let mut temp_vec = Vec::new();
+
             $(
                 temp_vec.push($x.into());
             )*
-                temp_vec
+
+            temp_vec
         }
     };
 }
@@ -44,9 +46,9 @@ impl Emulator {
         if let Some(cd) = disk {
             match std::fs::metadata(&cd) {
                 Ok(_) => {
-                    append_vec!(v, "-drive");
                     append_vec!(
                         v,
+                        "-drive",
                         format!("file={},media=cdrom,index={}", cd.display(), index)
                     );
                 }
@@ -74,7 +76,7 @@ impl launcher::Emulator for Emulator {
                 let img_path = rc.dsh.vm_path(vm_name, QEMU_IMG_NAME)?;
                 let mon = rc.dsh.monitor_path(vm_name)?;
 
-                let mut v: Vec<String> = string_vec![
+                let mut v: Vec<String> = into_vec![
                     "-nodefaults",
                     "-chardev",
                     format!("socket,server=on,wait=off,id=char0,path={}", mon.display()),
