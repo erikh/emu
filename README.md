@@ -5,7 +5,7 @@
 It contains commands to:
 
 -   Manage VMs as a system-wide fleet
-    -   List all VMs in one place
+    -   List all VMs in one place, along with their run status
     -   Clone and Import VMs from other sources
 -   Create, Delete, Start and Stop VMs
     -   ISOs can be attached
