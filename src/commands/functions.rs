@@ -50,6 +50,23 @@ pub(crate) fn list() -> Result<()> {
     })
 }
 
+pub(crate) fn rename(old: &str, new: &str) -> Result<()> {
+    let dsh = DirectoryStorageHandler::default();
+    match dsh.rename(old, new) {
+        Ok(_) => {
+            println!("Renamed {} to {}", old, new);
+        }
+        Err(_) => {
+            println!(
+                "Could not rename {}. Does it exist, or does {} already exist?",
+                old, new
+            );
+        }
+    }
+
+    Ok(())
+}
+
 pub(crate) fn supervised() -> Result<()> {
     let s = SystemdStorage::default();
     s.list().map(|list| {

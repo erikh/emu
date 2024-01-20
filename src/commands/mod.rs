@@ -26,6 +26,13 @@ enum CommandType {
         /// Name of VM
         name: String,
     },
+    /// Rename VM to new name
+    Rename {
+        /// Original name of VM
+        old: String,
+        /// New name of VM
+        new: String,
+    },
     /// Open standard input to a port on the VM
     NC {
         /// Name of VM
@@ -174,6 +181,7 @@ impl Commands {
             CommandType::NC { name, port } => nc(&name, port).await,
             CommandType::SSH { name } => ssh(&name),
             CommandType::Create { name, size } => create(&name, size),
+            CommandType::Rename { old, new } => rename(&old, &new),
             CommandType::Delete { name } => delete(&name),
             CommandType::Supervise { cdrom, name } => supervise(&name, cdrom),
             CommandType::Unsupervise { name } => unsupervise(&name),

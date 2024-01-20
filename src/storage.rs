@@ -93,6 +93,7 @@ pub trait StorageHandler: std::fmt::Debug {
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool;
     fn create_monitor(&self, vm_name: &str) -> Result<()>;
     fn valid_filename(&self, name: &str) -> bool;
+    fn rename(&self, old: &str, new: &str) -> Result<()>;
 }
 
 #[derive(Clone, Debug)]
@@ -186,6 +187,10 @@ impl StorageHandler for DirectoryStorageHandler {
 
     fn monitor_path(&self, vm_name: &str) -> Result<PathBuf> {
         Ok(self.vm_root(vm_name)?.join("mon"))
+    }
+
+    fn rename(&self, old: &str, new: &str) -> Result<()> {
+        Ok(std::fs::rename(self.vm_root(old)?, self.vm_root(new)?)?)
     }
 
     fn config(&self, vm_name: &str) -> Result<Configuration> {
