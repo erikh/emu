@@ -1,4 +1,5 @@
 -   latest:
+    -   `emu config copy` allows you to copy pre-configured settings from one VM to another.
     -   `emu create -a` can now be used to add disks to an existing VM.
     -   Disks are now created stamped with the epoch seconds they were created at.
     -   `emu list -r` lists running VMs only.
