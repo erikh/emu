@@ -25,7 +25,23 @@ pub(crate) fn list() -> Result<()> {
     match dsh.vm_list() {
         Ok(list) => {
             for vm in list {
-                println!("{}", vm)
+                let supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
+                let mut status = "unsupervised";
+
+                if supervised {
+                    status = match systemd_active(&vm.name()) {
+                        Ok(_) => "supervised: running",
+                        Err(_) => "supervised: not running",
+                    }
+                }
+                println!(
+                    "{} ({}) (size: {:.2})",
+                    vm.name(),
+                    status,
+                    byte_unit::Byte::from_u128(vm.size().unwrap() as u128)
+                        .unwrap()
+                        .get_appropriate_unit(byte_unit::UnitType::Decimal)
+                );
             }
             Ok(())
         }
@@ -38,7 +54,11 @@ pub(crate) fn supervised() -> Result<()> {
     match s.list() {
         Ok(list) => {
             for vm in list {
-                println!("{}", vm)
+                let status = match systemd_active(&vm) {
+                    Ok(_) => "running",
+                    Err(_) => "not running",
+                };
+                println!("{}: {}", vm, status)
             }
             Ok(())
         }
@@ -225,9 +245,35 @@ pub(crate) fn unsupervise(vm_name: &str) -> Result<()> {
     reload_systemd()
 }
 
-pub(crate) fn reload_systemd() -> Result<()> {
+pub(crate) fn is_active(vm_name: &str) -> Result<()> {
+    match systemd_supervised(vm_name) {
+        Ok(_) => {}
+        Err(_) => {
+            println!("{} is not supervised", vm_name);
+            return Ok(());
+        }
+    }
+    match systemd_active(vm_name) {
+        Ok(_) => println!("{} is active", vm_name),
+        Err(_) => println!("{} is not active", vm_name),
+    }
+    Ok(())
+}
+
+pub(crate) fn systemd_supervised(vm_name: &str) -> Result<()> {
+    let s = SystemdStorage::default();
+    s.supervised(vm_name)
+}
+
+pub(crate) fn systemd_active(vm_name: &str) -> Result<()> {
+    let s = SystemdStorage::default();
+    systemd(vec!["is-active", &s.service_name(vm_name)?, "-q"])
+}
+
+pub(crate) fn systemd(mut command: Vec<&str>) -> Result<()> {
+    command.insert(0, "--user");
     match Command::new("/bin/systemctl")
-        .args(vec!["--user", "daemon-reload"])
+        .args(command)
         .stderr(Stdio::null())
         .stdout(Stdio::null())
         .status()
@@ -241,6 +287,10 @@ pub(crate) fn reload_systemd() -> Result<()> {
         }
         Err(e) => Err(anyhow!(e)),
     }
+}
+
+pub(crate) fn reload_systemd() -> Result<()> {
+    systemd(vec!["daemon-reload"])
 }
 
 pub(crate) fn shutdown(vm_name: &str) -> Result<()> {

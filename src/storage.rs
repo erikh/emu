@@ -29,6 +29,14 @@ impl SystemdStorage {
         Ok(std::fs::create_dir_all(&self.basedir)?)
     }
 
+    pub fn service_name(&self, vm_name: &str) -> Result<String> {
+        if !self.storage.valid_filename(vm_name) {
+            return Err(anyhow!("invalid vm name"));
+        }
+
+        Ok(format!("emu.{}", vm_name))
+    }
+
     pub fn service_filename(&self, vm_name: &str) -> Result<String> {
         if !self.storage.valid_filename(vm_name) {
             return Err(anyhow!("invalid vm name"));
@@ -36,6 +44,10 @@ impl SystemdStorage {
 
         let path = self.basedir.join(format!("emu.{}.service", vm_name));
         Ok(path.to_str().unwrap().to_string())
+    }
+
+    pub fn supervised(&self, vm_name: &str) -> Result<()> {
+        Ok(std::fs::metadata(self.service_filename(vm_name)?).map(|_| ())?)
     }
 
     pub fn remove(&self, vm_name: &str) -> Result<()> {
@@ -102,11 +114,15 @@ impl std::fmt::Display for StoragePath {
 }
 
 impl StoragePath {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
     pub fn with_base(&self) -> PathBuf {
         self.base.join(self.name.clone())
     }
 
-    fn size(&self) -> Result<usize> {
+    pub fn size(&self) -> Result<usize> {
         let dir = std::fs::read_dir(self.with_base())?;
         let mut total = 0;
         let mut items = Vec::new();

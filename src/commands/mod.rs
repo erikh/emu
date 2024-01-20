@@ -106,6 +106,11 @@ enum CommandType {
     /// Show and manipulate VM configuration
     #[command(subcommand)]
     Config(ConfigSubcommand),
+    /// Is this VM currently active? (Supervised VMs only)
+    IsActive {
+        /// Name of VM
+        name: String,
+    },
 }
 
 #[derive(Debug, Subcommand, Clone)]
@@ -193,6 +198,7 @@ impl Commands {
                 name,
                 from_file,
             } => import(&name, from_file, &format),
+            CommandType::IsActive { name } => is_active(&name),
         }
     }
 }
