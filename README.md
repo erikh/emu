@@ -97,19 +97,37 @@ myvm.template (unsupervised) (6.10 GB)
 ### Configuration
 
 Configuration is provided currently by injecting values into a file under
-`~/.local/share/emu/<VM>/config`. It is in TOML format. Values are not
-completed documented yet.
+`~/.local/share/emu/<VM>/config`. It is in TOML format.
+
+#### Configuration Values
+
+`[machine]` section:
+
+-   `memory`: integer; memory in megabytes. Default is 16384.
+-   `cpus`: integer; count of CPU cores. Default is 8.
+-   `vga`: string; name of VGA driver to use with `qemu -vga`. Default is `virtio`.
+-   `image_interface`: string; name of interface to use for talking to images with `-drive`. Default `virtio` is recommended.
+-   `cpu_type`: string; type of CPU to support. Must be x86 and valid to pass to `qemu -cpu`. Default `host` is recommended.
+-   `ssh_port`: integer; port to contact for SSH access; used by `emu ssh`. Default is 2222.
+
+`[ports]` is just a key/value map of host ports, opened on `localhost`, to guest ports, opened on `0.0.0.0`. No other processing is performed.
+
+#### Configuration Example
 
 ```toml
 [machine]
-cpus = 4 # actually cores
-memory = 512 # megabytes
+cpus = 4
+memory = 512
 
 [ports]
-2222 = 22 # host -> guest map
+2222 = 22
 ```
 
-You can control these values with `emu config <subcommand>` sub-commands.
+#### Management Tool
+
+You can control these values with `emu config <subcommand>` sub-commands. `emu config show`, `emu config set`, and `emu config port` can be used to manage these sections.
+
+The commands for `emu config set` are the same as the above `[machine]` section keys, only the underscores (`_`) are replaced with dashes; so that `ssh_port` is now `ssh-port`.
 
 ```bash
 $ emu config show myvm
@@ -123,6 +141,7 @@ memory = 512
 $ emu config port map myvm 2223 23
 $ emu config port unmap myvm 2223
 
+$ emu config set ssh-port 2222
 $ emu config set myvm cpus 8
 ```
 
