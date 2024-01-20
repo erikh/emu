@@ -1,10 +1,13 @@
 [package]
 name = "emu-cli"
 version = "0.1.0"
-authors = ["Erik Hollensbe <github@hollensbe.org>"]
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Linux desktop-friendly CLI qemu wrangling tool"
+authors = ["Erik Hollensbe <erik+github@hollensbe.org>"]
+license = "MIT"
+homepage = "https://github.com/erikh/emu"
+repository = "https://github.com/erikh/emu"
+keywords = [ "qemu", "vm", "linux", "cli", "ui" ]
 
 [dependencies]
 tinytemplate = "^1"
