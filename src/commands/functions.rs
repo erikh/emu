@@ -195,6 +195,32 @@ pub(crate) fn create(vm_name: &str, size: usize, append: bool) -> Result<()> {
     imager.create(vm_name, size)
 }
 
+pub(crate) fn list_disks(vm_name: &str) -> Result<()> {
+    let dsh = DirectoryStorageHandler::default();
+
+    if !dsh.valid_filename(vm_name) {
+        return Err(anyhow!("invalid VM name"));
+    }
+
+    if !dsh.vm_exists(vm_name) {
+        return Err(anyhow!("vm doesn't exist"));
+    }
+
+    for disk in dsh.disk_list(vm_name)? {
+        let disk = disk
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .trim_start_matches("qemu-")
+            .trim_end_matches(QEMU_IMG_DEFAULT_FORMAT)
+            .trim_end_matches(".");
+        println!("{}", disk);
+    }
+
+    Ok(())
+}
+
 pub(crate) fn delete(vm_name: &str, disk: Option<String>) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 

@@ -38,6 +38,11 @@ enum CommandType {
         /// New name of VM
         new: String,
     },
+    /// List all disks a VM has available
+    ListDisks {
+        /// Name of VM
+        name: String,
+    },
     /// Open standard input to a port on the VM
     NC {
         /// Name of VM
@@ -195,6 +200,7 @@ impl Commands {
                     ConfigPortSubcommand::Unmap { name, hostport } => port_unmap(&name, hostport),
                 },
             },
+            CommandType::ListDisks { name } => list_disks(&name),
             CommandType::NC { name, port } => nc(&name, port).await,
             CommandType::SSH { name } => ssh(&name),
             CommandType::Create { append, name, size } => create(&name, size, append),
