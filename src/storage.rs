@@ -1,4 +1,4 @@
-use crate::config::Configuration;
+use crate::{config::Configuration, image::QEMU_IMG_DEFAULT_FORMAT};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
@@ -259,7 +259,12 @@ impl StorageHandler for DirectoryStorageHandler {
         let dir = std::fs::read_dir(self.vm_root(name)?)?;
         for item in dir {
             if let Ok(item) = item {
-                if item.path().to_str().unwrap().ends_with(".qcow2") {
+                if item
+                    .path()
+                    .to_str()
+                    .unwrap()
+                    .ends_with(&format!(".{}", QEMU_IMG_DEFAULT_FORMAT))
+                {
                     v.push(item.path());
                 }
             }

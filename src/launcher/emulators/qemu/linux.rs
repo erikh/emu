@@ -1,4 +1,4 @@
-use crate::{launcher, storage::StorageHandler};
+use crate::{image::QEMU_IMG_DEFAULT_FORMAT, launcher, storage::StorageHandler};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
@@ -77,7 +77,8 @@ impl launcher::Emulator for Emulator {
             for disk in disk_list {
                 disks.push("-drive".to_string());
                 disks.push(format!(
-                    "driver=qcow2,if={},file={},cache=none,media=disk,index=0",
+                    "driver={},if={},file={},cache=none,media=disk,index=0",
+                    QEMU_IMG_DEFAULT_FORMAT,
                     config.machine.image_interface,
                     disk.display()
                 ));

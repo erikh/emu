@@ -10,11 +10,12 @@ pub const QEMU_IMG_DEFAULT_FORMAT: &str = "qcow2";
 
 fn qemu_img_name() -> String {
     format!(
-        "{}.qcow2",
+        "{}.{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs()
+            .as_secs(),
+        QEMU_IMG_DEFAULT_FORMAT,
     )
 }
 
@@ -65,7 +66,7 @@ impl Imager for QEmuImager {
                 "-f",
                 format,
                 "-O",
-                "qcow2",
+                QEMU_IMG_DEFAULT_FORMAT,
                 orig_file.to_str().unwrap(),
                 &self.storage.vm_path(name, &filename)?,
             ])
