@@ -20,6 +20,7 @@ impl EmulatorController {
 
 impl launcher::EmulatorController for EmulatorController {
     fn shutdown(&self, name: &str) -> Result<()> {
+        let _ = std::fs::remove_file(self.dsh.vm_root(name)?.join("pid"));
         let stream = UnixStream::connect(self.dsh.monitor_path(name)?)?;
         let mut us = UnixSocket::new(stream)?;
         us.handshake()?;

@@ -103,13 +103,7 @@ pub struct StoragePath {
 
 impl std::fmt::Display for StoragePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!(
-            "{} ({:.2})",
-            self.name,
-            byte_unit::Byte::from_u128(self.size().unwrap() as u128)
-                .unwrap()
-                .get_appropriate_unit(byte_unit::UnitType::Decimal),
-        ))
+        f.write_str(&self.name())
     }
 }
 

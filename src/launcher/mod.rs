@@ -1,6 +1,6 @@
 pub mod emulators;
 
-use crate::storage::DirectoryStorageHandler;
+use crate::storage::{DirectoryStorageHandler, StorageHandler};
 use anyhow::{anyhow, Result};
 use fork::{daemon, Fork};
 use std::{path::PathBuf, process::Command};
@@ -48,7 +48,13 @@ impl Launcher {
         };
 
         match spawnres {
-            Ok(mut child) => Ok(Some(child.wait()?)),
+            Ok(mut child) => {
+                std::fs::write(
+                    &self.rc.dsh.vm_root(vm_name)?.join("pid"),
+                    format!("{}", child.id()).as_bytes(),
+                )?;
+                Ok(Some(child.wait()?))
+            }
             Err(e) => Err(anyhow!(e)),
         }
     }
