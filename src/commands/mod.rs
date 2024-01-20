@@ -143,6 +143,13 @@ enum ConfigSubcommand {
         /// Value of key to set
         value: String,
     },
+    /// Copy settings from one VM to another
+    Copy {
+        /// Name of VM to copy settings from
+        from: String,
+        /// Name of VM to copy settings to
+        to: String,
+    },
     /// Adjust port mappings
     #[command(subcommand)]
     Port(ConfigPortSubcommand),
@@ -175,6 +182,7 @@ impl Commands {
         match args.command {
             CommandType::Config(sub) => match sub {
                 ConfigSubcommand::Set { name, key, value } => config_set(&name, &key, &value),
+                ConfigSubcommand::Copy { from, to } => config_copy(&from, &to),
                 ConfigSubcommand::Show { name } => show_config(&name),
                 ConfigSubcommand::Port(sub) => match sub {
                     ConfigPortSubcommand::Map {

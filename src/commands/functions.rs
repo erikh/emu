@@ -403,6 +403,28 @@ pub(crate) fn clone(from: &str, to: &str) -> Result<()> {
     imager.clone(from, to)
 }
 
+pub(crate) fn config_copy(from: &str, to: &str) -> Result<()> {
+    let dsh = DirectoryStorageHandler::default();
+    if !dsh.vm_exists(from) {
+        println!("VM {} does not exist", from);
+        return Ok(());
+    }
+
+    match dsh.config(from) {
+        Ok(from) => match dsh.write_config(to, from) {
+            Ok(_) => {}
+            Err(_) => {
+                println!("VM {} does not exist", to);
+            }
+        },
+        Err(_) => {
+            println!("VM {} does not exist", from);
+        }
+    }
+
+    Ok(())
+}
+
 pub(crate) fn show_config(vm_name: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     println!("{}", dsh.config(vm_name)?.to_string());
@@ -411,9 +433,22 @@ pub(crate) fn show_config(vm_name: &str) -> Result<()> {
 
 pub(crate) fn config_set(vm_name: &str, key: &str, value: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
-    let mut config = dsh.config(vm_name)?;
-    config.set_machine_value(key, value)?;
-    dsh.write_config(vm_name, config)
+    match dsh.config(vm_name) {
+        Ok(mut config) => {
+            config.set_machine_value(key, value)?;
+            match dsh.write_config(vm_name, config) {
+                Ok(_) => {}
+                Err(_) => {
+                    println!("VM {} does not exist", vm_name);
+                }
+            }
+        }
+        Err(_) => {
+            println!("VM {} does not exist", vm_name);
+        }
+    }
+
+    Ok(())
 }
 
 pub(crate) fn port_map(vm_name: &str, hostport: u16, guestport: u16) -> Result<()> {
