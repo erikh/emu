@@ -143,6 +143,16 @@ $ emu config port unmap myvm 2223
 
 $ emu config set myvm ssh-port 2222
 $ emu config set myvm cpus 8
+
+$ emu config show myvm
+[machine]
+cpus = 8
+memory = 512
+ssh_port = 2222
+
+[ports]
+2222 = 22
+2223 = 23
 ```
 
 ## License
