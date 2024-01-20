@@ -1,4 +1,7 @@
 -   latest:
+    -   `emu import` always creates a new disk when importing.
+    -   `emu clone` copies all images from one VM to the new destination.
+    -   `emu delete` now takes an optional parameter to delete individual VM images.
     -   `emu config copy` allows you to copy pre-configured settings from one VM to another.
     -   `emu create -a` can now be used to add disks to an existing VM.
     -   Disks are now created stamped with the epoch seconds they were created at.
