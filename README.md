@@ -46,41 +46,52 @@ Once installed, you can invoke the software with `emu`.
 
 ```bash
 $ emu create myvm 50 # gigabytes of storage
+
 # start the vm with the cdrom set to the ubuntu iso. Press ^C to terminate the vm.
 $ emu run myvm --cdrom ubuntu.iso
 
 # make a copy before doing something dumb
 $ emu clone myvm myvm.template
 $ emu list
-myvm
-myvm.template
+myvm (unsupervised) (size: 6.10 GB)
+myvm.template (unsupervised) (size: 6.10 GB)
 
 # supervision in systemd
-
 $ emu supervise myvm
 $ emu supervised
-myvm (6 GB)
+myvm: not running
 $ systemctl --user start myvm.emu # or enable it, if you'd like. it sticks to your login session.
+$ emu list
+myvm (supervised: running) (size: 6.10 GB)
+myvm.template (unsupervised) (size: 6.10 GB)
 $ systemctl --user stop myvm.emu # graceful shutdown
 $ emu unsupervise myvm
-# ssh support
-$ emu config port map myvm 2222 22
-$ emu config port map myvm 8000 80
-$ emu config set myvm ssh-port 2222
+
 # run detached and without a screen
 $ emu run --detach --headless myvm
+$ emu list
+myvm (pid: 8675309) (size: 6.10 GB)
+myvm.template (unsupervised) (size: 6.10 GB)
+
+# ssh support
+$ emu config port map myvm 2222 22
+$ emu config set myvm ssh-port 2222
 $ emu ssh myvm
 myvm$ exit
+
+# nc support
+$ emu config port map myvm 8000 80
 $ emu nc myvm 8000
 GET / HTTP/1.1
 Host: localhost
 HTTP/1.1 403 Forbidden
 Connection: close
+
 # cleanup
 $ emu shutdown myvm
 $ emu remove myvm
 $ emu list
-myvm.template (6 GB)
+myvm.template (unsupervised) (6 GB)
 ```
 
 ### Configuration
