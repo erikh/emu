@@ -22,48 +22,42 @@ use tokio::{
 
 pub(crate) fn list() -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
-    match dsh.vm_list() {
-        Ok(list) => {
-            for vm in list {
-                let supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
-                let mut status = "unsupervised";
+    dsh.vm_list().map(|list| {
+        for vm in list {
+            let supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
+            let mut status = "unsupervised";
 
-                if supervised {
-                    status = match systemd_active(&vm.name()) {
-                        Ok(_) => "supervised: running",
-                        Err(_) => "supervised: not running",
-                    }
+            if supervised {
+                status = match systemd_active(&vm.name()) {
+                    Ok(_) => "supervised: running",
+                    Err(_) => "supervised: not running",
                 }
-                println!(
-                    "{} ({}) (size: {:.2})",
-                    vm.name(),
-                    status,
-                    byte_unit::Byte::from_u128(vm.size().unwrap() as u128)
-                        .unwrap()
-                        .get_appropriate_unit(byte_unit::UnitType::Decimal)
-                );
             }
-            Ok(())
+            println!(
+                "{} ({}) (size: {:.2})",
+                vm.name(),
+                status,
+                byte_unit::Byte::from_u128(vm.size().unwrap() as u128)
+                    .unwrap()
+                    .get_appropriate_unit(byte_unit::UnitType::Decimal)
+            );
         }
-        Err(e) => Err(e),
-    }
+        ()
+    })
 }
 
 pub(crate) fn supervised() -> Result<()> {
     let s = SystemdStorage::default();
-    match s.list() {
-        Ok(list) => {
-            for vm in list {
-                let status = match systemd_active(&vm) {
-                    Ok(_) => "running",
-                    Err(_) => "not running",
-                };
-                println!("{}: {}", vm, status)
-            }
-            Ok(())
+    s.list().map(|list| {
+        for vm in list {
+            let status = match systemd_active(&vm) {
+                Ok(_) => "running",
+                Err(_) => "not running",
+            };
+            println!("{}: {}", vm, status)
         }
-        Err(e) => Err(e),
-    }
+        ()
+    })
 }
 
 pub(crate) async fn nc(vm_name: &str, port: u16) -> Result<()> {
