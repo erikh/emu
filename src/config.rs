@@ -111,6 +111,10 @@ impl Configuration {
                 self.machine.cpu_type = value.to_string();
                 Ok(())
             }
+            "ssh-port" => {
+                self.machine.ssh_port = value.parse::<u16>()?;
+                Ok(())
+            }
             _ => Err(anyhow!("key does not exist")),
         }
     }
