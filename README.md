@@ -127,7 +127,7 @@ memory = 512
 
 You can control these values with `emu config <subcommand>` sub-commands. `emu config show`, `emu config set`, and `emu config port` can be used to manage these sections.
 
-The commands for `emu config set` are the same as the above `[machine]` section keys, only the underscores (`_`) are replaced with dashes; so that `ssh_port` is now `ssh-port`.
+The commands for `emu config set` are the same as the above `[machine]` section keys, only the underscores (`_`) are replaced with dashes (`-`); so that `ssh_port` is now `ssh-port`.
 
 ```bash
 $ emu config show myvm
