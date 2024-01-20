@@ -141,7 +141,7 @@ memory = 512
 $ emu config port map myvm 2223 23
 $ emu config port unmap myvm 2223
 
-$ emu config set ssh-port 2222
+$ emu config set myvm ssh-port 2222
 $ emu config set myvm cpus 8
 ```
 
