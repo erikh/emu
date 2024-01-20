@@ -1,6 +1,6 @@
 [package]
 name = "emu-cli"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "Linux desktop-friendly CLI qemu wrangling tool"
 authors = ["Erik Hollensbe <erik+github@hollensbe.org>"]

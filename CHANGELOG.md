@@ -1,4 +1,4 @@
--   latest:
+-   0.2.0:
     -   `emu list-disks` to list disks for a VM.
     -   `emu import` always creates a new disk when importing.
     -   `emu clone` copies all images from one VM to the new destination.
