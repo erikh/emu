@@ -1,5 +1,5 @@
 use crate::{
-    image::{Imager, QEmuImager},
+    image::{Imager, QEmuImager, QEMU_IMG_DEFAULT_FORMAT},
     launcher::{
         emulators::qemu::{self, linux},
         EmulatorController, Launcher, RuntimeConfig,
@@ -195,7 +195,7 @@ pub(crate) fn create(vm_name: &str, size: usize, append: bool) -> Result<()> {
     imager.create(vm_name, size)
 }
 
-pub(crate) fn delete(vm_name: &str) -> Result<()> {
+pub(crate) fn delete(vm_name: &str, disk: Option<String>) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
@@ -207,13 +207,20 @@ pub(crate) fn delete(vm_name: &str) -> Result<()> {
     }
 
     match dsh.vm_root(vm_name) {
-        Ok(path) => std::fs::remove_dir_all(path)?,
+        Ok(path) => {
+            if let Some(disk) = disk {
+                std::fs::remove_file(
+                    path.join(format!("qemu-{}.{}", disk, QEMU_IMG_DEFAULT_FORMAT)),
+                )?;
+            } else {
+                std::fs::remove_dir_all(path)?;
+                if let Err(_) = unsupervise(vm_name) {
+                    println!("Could not remove systemd unit; assuming it was never installed")
+                }
+            }
+        }
         Err(e) => return Err(e),
     };
-
-    if let Err(_) = unsupervise(vm_name) {
-        println!("Could not remove systemd unit; assuming it was never installed")
-    }
 
     Ok(())
 }

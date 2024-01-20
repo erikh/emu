@@ -28,6 +28,8 @@ enum CommandType {
     Delete {
         /// Name of VM
         name: String,
+        /// (Optional) ID of disk to remove
+        disk: Option<String>,
     },
     /// Rename VM to new name
     Rename {
@@ -197,7 +199,7 @@ impl Commands {
             CommandType::SSH { name } => ssh(&name),
             CommandType::Create { append, name, size } => create(&name, size, append),
             CommandType::Rename { old, new } => rename(&old, &new),
-            CommandType::Delete { name } => delete(&name),
+            CommandType::Delete { name, disk } => delete(&name, disk),
             CommandType::Supervise { cdrom, name } => supervise(&name, cdrom),
             CommandType::Unsupervise { name } => unsupervise(&name),
             CommandType::Run {
