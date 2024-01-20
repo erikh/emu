@@ -77,7 +77,7 @@ impl launcher::Emulator for Emulator {
             for (x, disk) in disk_list.iter().enumerate() {
                 disks.push("-drive".to_string());
                 disks.push(format!(
-                    "driver={},if={},file={},cache=writethrough,media=disk,index={}",
+                    "driver={},if={},file={},cache=none,media=disk,index={}",
                     QEMU_IMG_DEFAULT_FORMAT,
                     config.machine.image_interface,
                     disk.display(),
