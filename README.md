@@ -30,7 +30,7 @@ To build the software, you will need a working rust environment. I strongly reco
 
 ## Stability
 
-emu is still undergoing some UI changes. I do use it somewhat regularly, but there may be additional work that needs to be done for a larger goal that changes small things as they stand now. I don't foresee any need to do needless changes, however.
+emu is still undergoing some UI changes. I do use it somewhat regularly, but there may be additional work that needs to be done for a larger goal that changes small things as they stand now.
 
 emu has bugs, particularly nasty ones at times related to your VMs. I would not use emu in a setting where data integrity mattered much.
 
