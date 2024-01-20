@@ -90,7 +90,11 @@ enum CommandType {
         arguments: Option<String>,
     },
     /// Yield a list of VMs, one on each line
-    List,
+    List {
+        /// List only currently supervised VMs
+        #[arg(short, long, default_value = "false")]
+        supervised: bool,
+    },
     /// Yield a list of supervised VMs, one on each line
     Supervised,
     /// Clone one VM to another
@@ -192,7 +196,7 @@ impl Commands {
                 extra_disk,
                 name,
             } => run(&name, cdrom, extra_disk, detach, headless),
-            CommandType::List => list(),
+            CommandType::List { supervised } => list(supervised),
             CommandType::Shutdown { name } => shutdown(&name),
             CommandType::QMP {
                 name,

@@ -20,32 +20,33 @@ use tokio::{
     sync::Mutex,
 };
 
-pub(crate) fn list() -> Result<()> {
+pub(crate) fn list(supervised: bool) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     dsh.vm_list().map(|list| {
         list.iter().for_each(|vm| {
-            let supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
+            let this_supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
 
-            let status = if supervised {
+            let (status, running) = if this_supervised {
                 match systemd_active(&vm.name()) {
-                    Ok(_) => "supervised: running",
-                    Err(_) => "supervised: not running",
+                    Ok(_) => ("supervised: running".to_string(), true),
+                    Err(_) => ("supervised: not running".to_string(), false),
                 }
-                .to_string()
             } else if qemu_active(&vm.name()) {
-                format!("pid: {}", qemu_pid(&vm.name()).unwrap()).to_string()
+                (format!("pid: {}", qemu_pid(&vm.name()).unwrap()), true)
             } else {
-                "unsupervised".to_string()
+                ("unsupervised".to_string(), false)
             };
 
-            println!(
-                "{} ({}) (size: {:.2})",
-                vm.name(),
-                status,
-                byte_unit::Byte::from_u128(vm.size().unwrap() as u128)
-                    .unwrap()
-                    .get_appropriate_unit(byte_unit::UnitType::Decimal)
-            );
+            if supervised && running || !supervised {
+                println!(
+                    "{} ({}) (size: {:.2})",
+                    vm.name(),
+                    status,
+                    byte_unit::Byte::from_u128(vm.size().unwrap() as u128)
+                        .unwrap()
+                        .get_appropriate_unit(byte_unit::UnitType::Decimal)
+                );
+            }
         });
     })
 }
