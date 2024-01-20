@@ -25,14 +25,19 @@ pub(crate) fn list() -> Result<()> {
     dsh.vm_list().map(|list| {
         list.iter().for_each(|vm| {
             let supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
-            let mut status = "unsupervised";
 
-            if supervised {
-                status = match systemd_active(&vm.name()) {
+            let status = if supervised {
+                match systemd_active(&vm.name()) {
                     Ok(_) => "supervised: running",
                     Err(_) => "supervised: not running",
                 }
-            }
+                .to_string()
+            } else if qemu_active(&vm.name()) {
+                format!("pid: {}", qemu_pid(&vm.name()).unwrap()).to_string()
+            } else {
+                "unsupervised".to_string()
+            };
+
             println!(
                 "{} ({}) (size: {:.2})",
                 vm.name(),
@@ -239,17 +244,37 @@ pub(crate) fn unsupervise(vm_name: &str) -> Result<()> {
 
 pub(crate) fn is_active(vm_name: &str) -> Result<()> {
     match systemd_supervised(vm_name) {
-        Ok(_) => {}
+        Ok(_) => match systemd_active(vm_name) {
+            Ok(_) => println!("{} is active", vm_name),
+            Err(_) => println!("{} is not active", vm_name),
+        },
         Err(_) => {
-            println!("{} is not supervised", vm_name);
-            return Ok(());
+            let running = qemu_active(vm_name);
+            println!(
+                "{}{}",
+                vm_name,
+                if running {
+                    " is active (pid: ".to_owned() + &qemu_pid(vm_name)?.to_string() + ")"
+                } else {
+                    " is not active".to_string()
+                }
+            );
         }
     }
-    match systemd_active(vm_name) {
-        Ok(_) => println!("{} is active", vm_name),
-        Err(_) => println!("{} is not active", vm_name),
-    }
+
     Ok(())
+}
+
+pub(crate) fn qemu_active(vm_name: &str) -> bool {
+    qemu_pid(vm_name).map_or_else(
+        |_| false,
+        |pid| std::fs::metadata(&format!("/proc/{}", pid)).map_or_else(|_| false, |_| true),
+    )
+}
+
+pub(crate) fn qemu_pid(vm_name: &str) -> Result<u32> {
+    let dsh = DirectoryStorageHandler::default();
+    Ok(std::fs::read_to_string(dsh.vm_root(vm_name)?.join("pid"))?.parse::<u32>()?)
 }
 
 pub(crate) fn systemd_supervised(vm_name: &str) -> Result<()> {
