@@ -1,4 +1,6 @@
 -   latest:
+    -   `emu create -a` can now be used to add disks to an existing VM.
+    -   Disks are now created stamped with the epoch seconds they were created at.
     -   `emu list -r` lists running VMs only.
     -   Rename command; rename vms you manage.
     -   Better error messages in some situations.
