@@ -1,6 +1,7 @@
 -   latest:
+    -   `emu list -r` lists running VMs only.
     -   Rename command; rename vms you manage.
-    -   Better error messages in some situations
+    -   Better error messages in some situations.
 -   0.1.1:
     -   Tracking of run state; specialized for systemd or ad-hoc qemu runs
         -   Reflected in lists and also with a new command `is-active`
