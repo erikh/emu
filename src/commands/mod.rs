@@ -120,7 +120,7 @@ enum CommandType {
     /// Show and manipulate VM configuration
     #[command(subcommand)]
     Config(ConfigSubcommand),
-    /// Is this VM currently active? (Supervised VMs only)
+    /// Is this VM currently active?
     IsActive {
         /// Name of VM
         name: String,
