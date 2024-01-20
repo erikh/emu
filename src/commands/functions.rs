@@ -23,7 +23,7 @@ use tokio::{
 pub(crate) fn list() -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     dsh.vm_list().map(|list| {
-        for vm in list {
+        list.iter().for_each(|vm| {
             let supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
             let mut status = "unsupervised";
 
@@ -41,22 +41,20 @@ pub(crate) fn list() -> Result<()> {
                     .unwrap()
                     .get_appropriate_unit(byte_unit::UnitType::Decimal)
             );
-        }
-        ()
+        });
     })
 }
 
 pub(crate) fn supervised() -> Result<()> {
     let s = SystemdStorage::default();
     s.list().map(|list| {
-        for vm in list {
+        list.iter().for_each(|vm| {
             let status = match systemd_active(&vm) {
                 Ok(_) => "running",
                 Err(_) => "not running",
             };
             println!("{}: {}", vm, status)
-        }
-        ()
+        });
     })
 }
 
