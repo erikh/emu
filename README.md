@@ -91,7 +91,7 @@ Connection: close
 $ emu shutdown myvm
 $ emu remove myvm
 $ emu list
-myvm.template (unsupervised) (6 GB)
+myvm.template (unsupervised) (6.10 GB)
 ```
 
 ### Configuration
