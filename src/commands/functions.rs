@@ -427,6 +427,10 @@ pub(crate) fn config_copy(from: &str, to: &str) -> Result<()> {
 
 pub(crate) fn show_config(vm_name: &str) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
+    if !dsh.vm_exists(vm_name) {
+        println!("VM {} does not exist", vm_name);
+        return Ok(());
+    }
     println!("{}", dsh.config(vm_name)?.to_string());
     Ok(())
 }
