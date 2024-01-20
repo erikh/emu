@@ -1,0 +1,5 @@
+-   0.1.1:
+    -   Tracking of run state; specialized for systemd or ad-hoc qemu runs
+        - Reflected in lists and also with a new command `is-active`
+-   0.1.0:
+    -   First release (after 4 years of sitting on the shelf)
