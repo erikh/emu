@@ -1,4 +1,5 @@
 -   latest:
+    -   Rename command; rename vms you manage.
     -   Better error messages in some situations
 -   0.1.1:
     -   Tracking of run state; specialized for systemd or ad-hoc qemu runs
