@@ -1,4 +1,4 @@
-use crate::{image::QEMU_IMG_NAME, launcher, storage::StorageHandler};
+use crate::{launcher, storage::StorageHandler};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
@@ -72,46 +72,49 @@ impl launcher::Emulator for Emulator {
     fn args(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<Vec<String>> {
         let config = rc.dsh.config(vm_name)?;
         if config.valid().is_ok() {
-            if rc.dsh.vm_path_exists(vm_name, QEMU_IMG_NAME) {
-                let img_path = rc.dsh.vm_path(vm_name, QEMU_IMG_NAME)?;
-                let mon = rc.dsh.monitor_path(vm_name)?;
-
-                let mut v: Vec<String> = into_vec![
-                    "-nodefaults",
-                    "-chardev",
-                    format!("socket,server=on,wait=off,id=char0,path={}", mon.display()),
-                    "-mon",
-                    "chardev=char0,mode=control,pretty=on",
-                    "-machine",
-                    "accel=kvm",
-                    "-vga",
-                    config.machine.vga,
-                    "-m",
-                    format!("{}M", config.machine.memory),
-                    "-cpu",
-                    config.machine.cpu_type,
-                    "-smp",
-                    format!(
-                        "cpus={},cores={},maxcpus={}",
-                        config.machine.cpus, config.machine.cpus, config.machine.cpus
-                    ),
-                    "-drive",
-                    format!(
-                        "driver=qcow2,if={},file={},cache=none,media=disk,index=0",
-                        config.machine.image_interface, img_path
-                    ),
-                    "-nic",
-                    format!("user{}", self.hostfwd_rules(vm_name, rc)?)
-                ];
-
-                self.display_rule(&mut v, rc.headless);
-                self.cdrom_rules(&mut v, rc.cdrom.clone(), 2)?;
-                self.cdrom_rules(&mut v, rc.extra_disk.clone(), 3)?;
-
-                Ok(v)
-            } else {
-                Err(anyhow!("vm image does not exist"))
+            let disk_list = rc.dsh.disk_list(vm_name)?;
+            let mut disks = Vec::new();
+            for disk in disk_list {
+                disks.push("-drive".to_string());
+                disks.push(format!(
+                    "driver=qcow2,if={},file={},cache=none,media=disk,index=0",
+                    config.machine.image_interface,
+                    disk.display()
+                ));
             }
+
+            let mon = rc.dsh.monitor_path(vm_name)?;
+
+            let mut v: Vec<String> = into_vec![
+                "-nodefaults",
+                "-chardev",
+                format!("socket,server=on,wait=off,id=char0,path={}", mon.display()),
+                "-mon",
+                "chardev=char0,mode=control,pretty=on",
+                "-machine",
+                "accel=kvm",
+                "-vga",
+                config.machine.vga,
+                "-m",
+                format!("{}M", config.machine.memory),
+                "-cpu",
+                config.machine.cpu_type,
+                "-smp",
+                format!(
+                    "cpus={},cores={},maxcpus={}",
+                    config.machine.cpus, config.machine.cpus, config.machine.cpus
+                ),
+                "-nic",
+                format!("user{}", self.hostfwd_rules(vm_name, rc)?)
+            ];
+
+            v.append(&mut disks);
+
+            self.display_rule(&mut v, rc.headless);
+            self.cdrom_rules(&mut v, rc.cdrom.clone(), 2)?;
+            self.cdrom_rules(&mut v, rc.extra_disk.clone(), 3)?;
+
+            Ok(v)
         } else {
             Err(anyhow!("vm configuration is invalid: {:?}", config.valid(),))
         }

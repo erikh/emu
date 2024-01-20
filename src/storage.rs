@@ -94,6 +94,7 @@ pub trait StorageHandler: std::fmt::Debug {
     fn create_monitor(&self, vm_name: &str) -> Result<()>;
     fn valid_filename(&self, name: &str) -> bool;
     fn rename(&self, old: &str, new: &str) -> Result<()>;
+    fn disk_list(&self, name: &str) -> Result<Vec<PathBuf>>;
 }
 
 #[derive(Clone, Debug)]
@@ -242,6 +243,31 @@ impl StorageHandler for DirectoryStorageHandler {
             }
             Err(e) => Err(anyhow!(e)),
         }
+    }
+
+    fn disk_list(&self, name: &str) -> Result<Vec<PathBuf>> {
+        if !self.valid_filename(name) {
+            return Err(anyhow!("path contains invalid characters"));
+        }
+
+        if !self.vm_exists(name) {
+            return Err(anyhow!("vm does not exist"));
+        }
+
+        let mut v = Vec::new();
+
+        let dir = std::fs::read_dir(self.vm_root(name)?)?;
+        for item in dir {
+            if let Ok(item) = item {
+                if item.path().to_str().unwrap().ends_with(".qcow2") {
+                    v.push(item.path());
+                }
+            }
+        }
+
+        v.sort();
+
+        Ok(v)
     }
 
     fn vm_path(&self, name: &str, filename: &str) -> Result<String> {
