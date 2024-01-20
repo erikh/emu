@@ -20,13 +20,13 @@ use tokio::{
     sync::Mutex,
 };
 
-pub(crate) fn list(supervised: bool) -> Result<()> {
+pub(crate) fn list(running: bool) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     dsh.vm_list().map(|list| {
         list.iter().for_each(|vm| {
-            let this_supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
+            let supervised = systemd_supervised(&vm.name()).map_or_else(|_| false, |_| true);
 
-            let (status, running) = if this_supervised {
+            let (status, is_running) = if supervised {
                 match systemd_active(&vm.name()) {
                     Ok(_) => ("supervised: running".to_string(), true),
                     Err(_) => ("supervised: not running".to_string(), false),
@@ -37,7 +37,7 @@ pub(crate) fn list(supervised: bool) -> Result<()> {
                 ("unsupervised".to_string(), false)
             };
 
-            if supervised && running || !supervised {
+            if running && is_running || !running {
                 println!(
                     "{} ({}) (size: {:.2})",
                     vm.name(),

@@ -91,9 +91,9 @@ enum CommandType {
     },
     /// Yield a list of VMs, one on each line
     List {
-        /// List only currently supervised VMs
+        /// List only currently running VMs
         #[arg(short, long, default_value = "false")]
-        supervised: bool,
+        running: bool,
     },
     /// Yield a list of supervised VMs, one on each line
     Supervised,
@@ -196,7 +196,7 @@ impl Commands {
                 extra_disk,
                 name,
             } => run(&name, cdrom, extra_disk, detach, headless),
-            CommandType::List { supervised } => list(supervised),
+            CommandType::List { running } => list(running),
             CommandType::Shutdown { name } => shutdown(&name),
             CommandType::QMP {
                 name,
