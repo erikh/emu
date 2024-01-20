@@ -74,13 +74,14 @@ impl launcher::Emulator for Emulator {
         if config.valid().is_ok() {
             let disk_list = rc.dsh.disk_list(vm_name)?;
             let mut disks = Vec::new();
-            for disk in disk_list {
+            for (x, disk) in disk_list.iter().enumerate() {
                 disks.push("-drive".to_string());
                 disks.push(format!(
-                    "driver={},if={},file={},cache=none,media=disk,index=0",
+                    "driver={},if={},file={},cache=writethrough,media=disk,index={}",
                     QEMU_IMG_DEFAULT_FORMAT,
                     config.machine.image_interface,
-                    disk.display()
+                    disk.display(),
+                    x
                 ));
             }
 
@@ -112,8 +113,8 @@ impl launcher::Emulator for Emulator {
             v.append(&mut disks);
 
             self.display_rule(&mut v, rc.headless);
-            self.cdrom_rules(&mut v, rc.cdrom.clone(), 2)?;
-            self.cdrom_rules(&mut v, rc.extra_disk.clone(), 3)?;
+            self.cdrom_rules(&mut v, rc.cdrom.clone(), (disks.len() + 2) as u8)?;
+            self.cdrom_rules(&mut v, rc.extra_disk.clone(), (disks.len() + 3) as u8)?;
 
             Ok(v)
         } else {
