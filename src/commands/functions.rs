@@ -170,24 +170,25 @@ pub(crate) fn ssh(vm_name: &str) -> Result<()> {
     }
 }
 
-pub(crate) fn create(vm_name: &str, size: usize) -> Result<()> {
+pub(crate) fn create(vm_name: &str, size: usize, append: bool) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
 
     if !dsh.valid_filename(vm_name) {
         return Err(anyhow!("invalid VM name"));
     }
 
-    if dsh.vm_exists(vm_name) {
-        return Err(anyhow!("vm already exists"));
-    }
+    if !append {
+        if dsh.vm_exists(vm_name) {
+            return Err(anyhow!("vm already exists"));
+        }
+        match dsh.vm_root(vm_name) {
+            Ok(path) => std::fs::create_dir_all(path)?,
+            Err(e) => return Err(e),
+        };
 
-    match dsh.vm_root(vm_name) {
-        Ok(path) => std::fs::create_dir_all(path)?,
-        Err(e) => return Err(e),
-    };
-
-    if let Err(e) = dsh.create_monitor(vm_name) {
-        return Err(e);
+        if let Err(e) = dsh.create_monitor(vm_name) {
+            return Err(e);
+        }
     }
 
     let imager = QEmuImager::default();

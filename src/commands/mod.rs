@@ -16,6 +16,9 @@ pub struct Commands {
 enum CommandType {
     /// Create vm with a sized image
     Create {
+        /// Append this VM image to an existing VM?
+        #[arg(short, long, default_value = "false")]
+        append: bool,
         /// Name of VM
         name: String,
         /// Size in GB of VM image
@@ -184,7 +187,7 @@ impl Commands {
             },
             CommandType::NC { name, port } => nc(&name, port).await,
             CommandType::SSH { name } => ssh(&name),
-            CommandType::Create { name, size } => create(&name, size),
+            CommandType::Create { append, name, size } => create(&name, size, append),
             CommandType::Rename { old, new } => rename(&old, &new),
             CommandType::Delete { name } => delete(&name),
             CommandType::Supervise { cdrom, name } => supervise(&name, cdrom),

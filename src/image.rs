@@ -10,7 +10,7 @@ pub const QEMU_IMG_DEFAULT_FORMAT: &str = "qcow2";
 
 fn qemu_img_name() -> String {
     format!(
-        "{}.{}",
+        "qemu-{}.{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
