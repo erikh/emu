@@ -1,3 +1,5 @@
+-   latest:
+    -   Allow `emu ssh` to supply arguments to the underlying `ssh` command.
 -   0.2.0:
     -   `emu list-disks` to list disks for a VM.
     -   `emu import` always creates a new disk when importing.
