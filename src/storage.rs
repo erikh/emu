@@ -1,4 +1,4 @@
-use crate::{config::Configuration, image::QEMU_IMG_DEFAULT_FORMAT};
+use crate::{config::Configuration, image::QEMU_IMG_DEFAULT_FORMAT, util::path_exists};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
@@ -290,10 +290,7 @@ impl StorageHandler for DirectoryStorageHandler {
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool {
         // a gross simplification of path handling in rust!
         match self.vm_path(name, filename) {
-            Ok(path) => match std::fs::metadata(path) {
-                Ok(_) => true,
-                Err(_) => false,
-            },
+            Ok(path) => path_exists(path),
             Err(_) => false,
         }
     }

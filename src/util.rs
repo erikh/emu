@@ -1,3 +1,7 @@
 pub fn pid_running(pid: u32) -> bool {
-    std::fs::metadata(&format!("/proc/{}", pid)).map_or_else(|_| false, |_| true)
+    path_exists(format!("/proc/{}", pid))
+}
+
+pub fn path_exists(path: String) -> bool {
+    std::fs::metadata(path).map_or_else(|_| false, |_| true)
 }
