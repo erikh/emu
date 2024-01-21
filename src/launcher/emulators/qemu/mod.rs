@@ -4,10 +4,11 @@ use crate::{
     launcher,
     qmp::{Client, UnixSocket},
     storage::{DirectoryStorageHandler, StorageHandler},
+    util::pid_running,
 };
 use anyhow::{anyhow, Result};
 use std::{
-    fs::{metadata, read_to_string, remove_file},
+    fs::{read_to_string, remove_file},
     os::unix::net::UnixStream,
     thread::sleep,
     time::Duration,
@@ -38,7 +39,7 @@ impl launcher::EmulatorController for EmulatorController {
         let pid = read_to_string(pidfile.clone())?.parse::<u32>()?;
         let mut total = Duration::new(0, 0);
         let amount = Duration::new(0, 50);
-        while let Ok(_) = metadata(&format!("/proc/{}", pid)) {
+        while pid_running(pid) {
             total += amount;
             sleep(amount);
             if amount > Duration::new(10, 0) {

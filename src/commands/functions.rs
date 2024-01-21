@@ -7,6 +7,7 @@ use crate::{
     qmp::{Client, UnixSocket},
     storage::{DirectoryStorageHandler, StorageHandler, SystemdStorage},
     template::Systemd,
+    util::pid_running,
 };
 use anyhow::{anyhow, Result};
 use std::{
@@ -315,10 +316,7 @@ pub(crate) fn is_active(vm_name: &str) -> Result<()> {
 }
 
 pub(crate) fn qemu_active(vm_name: &str) -> bool {
-    qemu_pid(vm_name).map_or_else(
-        |_| false,
-        |pid| std::fs::metadata(&format!("/proc/{}", pid)).map_or_else(|_| false, |_| true),
-    )
+    qemu_pid(vm_name).map_or_else(|_| false, pid_running)
 }
 
 pub(crate) fn qemu_pid(vm_name: &str) -> Result<u32> {
