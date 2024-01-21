@@ -95,6 +95,7 @@ pub trait StorageHandler: std::fmt::Debug {
     fn valid_filename(&self, name: &str) -> bool;
     fn rename(&self, old: &str, new: &str) -> Result<()>;
     fn disk_list(&self, name: &str) -> Result<Vec<PathBuf>>;
+    fn pidfile(&self, vm_name: &str) -> Result<PathBuf>;
 }
 
 #[derive(Clone, Debug)]
@@ -295,5 +296,9 @@ impl StorageHandler for DirectoryStorageHandler {
             },
             Err(_) => false,
         }
+    }
+
+    fn pidfile(&self, vm_name: &str) -> Result<PathBuf> {
+        Ok(self.vm_root(vm_name)?.join("pid"))
     }
 }

@@ -323,7 +323,7 @@ pub(crate) fn qemu_active(vm_name: &str) -> bool {
 
 pub(crate) fn qemu_pid(vm_name: &str) -> Result<u32> {
     let dsh = DirectoryStorageHandler::default();
-    Ok(std::fs::read_to_string(dsh.vm_root(vm_name)?.join("pid"))?.parse::<u32>()?)
+    Ok(std::fs::read_to_string(dsh.pidfile(vm_name)?)?.parse::<u32>()?)
 }
 
 pub(crate) fn systemd_supervised(vm_name: &str) -> Result<()> {

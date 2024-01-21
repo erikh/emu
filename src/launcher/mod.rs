@@ -50,7 +50,7 @@ impl Launcher {
         match spawnres {
             Ok(mut child) => {
                 std::fs::write(
-                    &self.rc.dsh.vm_root(vm_name)?.join("pid"),
+                    &self.rc.dsh.pidfile(vm_name)?,
                     format!("{}", child.id()).as_bytes(),
                 )?;
                 Ok(Some(child.wait()?))

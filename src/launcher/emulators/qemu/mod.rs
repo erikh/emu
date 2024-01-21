@@ -34,7 +34,7 @@ impl launcher::EmulatorController for EmulatorController {
             }
             Err(_) => return Err(anyhow!("{} is not running or not monitored", name)),
         }
-        let pidfile = self.dsh.vm_root(name)?.join("pid");
+        let pidfile = self.dsh.pidfile(name)?;
         let pid = read_to_string(pidfile.clone())?.parse::<u32>()?;
         let mut total = Duration::new(0, 0);
         let amount = Duration::new(0, 50);
