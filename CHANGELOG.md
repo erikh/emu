@@ -1,4 +1,5 @@
 -   latest:
+    -   `emu shutdown` now waits for qemu to quit before quitting itself
     -   Allow `emu ssh` to supply arguments to the underlying `ssh` command.
 -   0.2.0:
     -   `emu list-disks` to list disks for a VM.
