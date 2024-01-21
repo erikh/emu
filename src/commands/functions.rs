@@ -151,19 +151,16 @@ pub(crate) async fn nc(vm_name: &str, port: u16) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn ssh(vm_name: &str) -> Result<()> {
+pub(crate) fn ssh(vm_name: &str, args: Option<Vec<String>>) -> Result<()> {
     let dsh = DirectoryStorageHandler::default();
     let mut cmd = Command::new("ssh");
-    if cmd
-        .args(vec![
-            "-p",
-            &dsh.config(vm_name)?.machine.ssh_port.to_string(),
-            "localhost",
-        ])
-        .spawn()?
-        .wait()?
-        .success()
-    {
+    let port = dsh.config(vm_name)?.machine.ssh_port.to_string();
+    let mut all_args = vec!["-p", &port, "localhost"];
+
+    let args = args.unwrap_or_default();
+    all_args.append(&mut args.iter().map(String::as_str).collect());
+
+    if cmd.args(all_args).spawn()?.wait()?.success() {
         Ok(())
     } else {
         Err(anyhow!("SSH failed with non-zero status"))

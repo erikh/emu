@@ -54,6 +54,8 @@ enum CommandType {
     SSH {
         /// Name of VM
         name: String,
+        /// Arguments to pass to `ssh` program (use -- to stop CLI processing)
+        args: Option<Vec<String>>,
     },
     /// Configure supervision of an already existing VM
     Supervise {
@@ -202,7 +204,7 @@ impl Commands {
             },
             CommandType::ListDisks { name } => list_disks(&name),
             CommandType::NC { name, port } => nc(&name, port).await,
-            CommandType::SSH { name } => ssh(&name),
+            CommandType::SSH { name, args } => ssh(&name, args),
             CommandType::Create { append, name, size } => create(&name, size, append),
             CommandType::Rename { old, new } => rename(&old, &new),
             CommandType::Delete { name, disk } => delete(&name, disk),
