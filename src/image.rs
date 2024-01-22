@@ -8,7 +8,7 @@ use std::{
 pub const QEMU_IMG_PATH: &str = "qemu-img";
 pub const QEMU_IMG_DEFAULT_FORMAT: &str = "qcow2";
 
-fn qemu_img_name() -> String {
+pub fn qemu_img_name() -> String {
     format!(
         "qemu-{}.{}",
         std::time::SystemTime::now()

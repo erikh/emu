@@ -58,7 +58,7 @@ impl Configuration {
         )
     }
 
-    pub fn to_file(&self, filename: &str) -> Result<()> {
+    pub fn to_file(&self, filename: PathBuf) -> Result<()> {
         let mut f = std::fs::File::create(filename)?;
         f.write_all(self.to_string().as_bytes())?;
 

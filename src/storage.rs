@@ -202,14 +202,7 @@ impl StorageHandler for DirectoryStorageHandler {
     }
 
     fn write_config(&self, vm_name: &str, config: Configuration) -> Result<()> {
-        if let Some(path) = PathBuf::from(self.vm_root(vm_name)?)
-            .join("config")
-            .to_str()
-        {
-            config.to_file(path)
-        } else {
-            Err(anyhow!("cannot construct path for vm"))
-        }
+        config.to_file(PathBuf::from(self.vm_root(vm_name)?).join("config"))
     }
 
     fn vm_exists(&self, name: &str) -> bool {
@@ -290,7 +283,7 @@ impl StorageHandler for DirectoryStorageHandler {
     fn vm_path_exists(&self, name: &str, filename: &str) -> bool {
         // a gross simplification of path handling in rust!
         match self.vm_path(name, filename) {
-            Ok(path) => path_exists(path),
+            Ok(path) => path_exists(PathBuf::from(path)),
             Err(_) => false,
         }
     }
