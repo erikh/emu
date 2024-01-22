@@ -8,4 +8,4 @@ pub mod storage;
 pub mod template;
 pub mod util;
 #[allow(dead_code)]
-mod v2;
+pub mod v2;
