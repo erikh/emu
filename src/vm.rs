@@ -1,6 +1,6 @@
 use super::{
     config_storage::XDGConfigStorage,
-    supervisor::PidSupervisor,
+    supervisor::{PidSupervisor, SystemdSupervisor},
     traits::{ConfigStorageHandler, SupervisorHandler, Supervisors},
 };
 use crate::config::Configuration;
@@ -34,6 +34,11 @@ impl VM {
             name,
             ..Default::default()
         };
+
+        if SystemdSupervisor::default().storage().exists(&obj) {
+            obj.supervisor = Supervisors::Systemd;
+        }
+
         obj.load_config(storage);
         obj
     }
@@ -72,6 +77,7 @@ impl VM {
 
     pub fn supervisor(&self) -> Arc<Box<dyn SupervisorHandler>> {
         match self.supervisor {
+            Supervisors::Systemd => Arc::new(Box::new(SystemdSupervisor::default())),
             _ => Arc::new(Box::new(PidSupervisor::default())),
         }
     }

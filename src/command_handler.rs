@@ -2,7 +2,8 @@ use super::{
     config_storage::XDGConfigStorage,
     image::{QEmuImageHandler, QEMU_IMG_DEFAULT_FORMAT},
     launcher::QEmuLauncher,
-    traits::{ConfigStorageHandler, ImageHandler, Launcher},
+    supervisor::SystemdSupervisor,
+    traits::{ConfigStorageHandler, ImageHandler, Launcher, SupervisorHandler},
     vm::VM,
 };
 use crate::{
@@ -250,13 +251,9 @@ impl CommandHandler {
             return Err(anyhow!("vm doesn't exist"));
         }
 
-        let supervisor = vm.supervisor();
+        let supervisor = SystemdSupervisor::default();
 
-        // let t = Systemd::new(Box::new(emu), ss);
-        // if let Err(e) = t.write(vm_name, &rc) {
-        //     return Err(e);
-        // }
-
+        supervisor.storage().create(vm)?;
         supervisor.reload()
     }
 

@@ -4,7 +4,7 @@ use super::{
     traits::{ConfigStorageHandler, SupervisorHandler, SupervisorStorageHandler, Supervisors},
     vm::VM,
 };
-use crate::util::pid_running;
+use crate::util::{path_exists, pid_running};
 use anyhow::{anyhow, Result};
 use std::{
     fs::write,
@@ -29,6 +29,10 @@ impl Default for SystemdSupervisorStorage {
 }
 
 impl SupervisorStorageHandler for SystemdSupervisorStorage {
+    fn exists(&self, vm: &VM) -> bool {
+        path_exists(self.service_filename(vm))
+    }
+
     fn service_filename(&self, vm: &VM) -> PathBuf {
         self.basedir
             .join(format!("{}.service", self.service_name(vm)))
@@ -94,6 +98,10 @@ impl SupervisorStorageHandler for NullSupervisorStorage {
     fn service_filename(&self, vm: &VM) -> PathBuf {
         vm.name().into()
     }
+
+    fn exists(&self, _: &VM) -> bool {
+        false
+    }
 }
 
 fn systemd(mut command: Vec<&str>) -> Result<()> {
@@ -130,7 +138,7 @@ impl Default for SystemdSupervisor {
 
 impl SupervisorHandler for SystemdSupervisor {
     fn storage(&self) -> Arc<Box<dyn SupervisorStorageHandler>> {
-        Arc::new(Box::new(NullSupervisorStorage::default()))
+        Arc::new(Box::new(SystemdSupervisorStorage::default()))
     }
 
     fn supervised(&self) -> bool {
@@ -138,7 +146,7 @@ impl SupervisorHandler for SystemdSupervisor {
     }
 
     fn reload(&self) -> Result<()> {
-        Err(anyhow!("PIDs cannot be reloaded"))
+        systemd(vec!["daemon-reload"])
     }
 
     fn is_active(&self, vm: &VM) -> Result<bool> {
@@ -153,7 +161,7 @@ impl SupervisorHandler for SystemdSupervisor {
     }
 
     fn kind(&self) -> Supervisors {
-        Supervisors::Pid
+        Supervisors::Systemd
     }
 }
 

@@ -31,6 +31,7 @@ pub trait SupervisorStorageHandler: Debug {
     fn remove(&self, vm: &VM) -> Result<()>;
     fn create(&self, vm: &VM) -> Result<()>;
     fn list(&self) -> Result<Vec<String>>;
+    fn exists(&self, vm: &VM) -> bool;
 }
 
 pub trait ConfigStorageHandler: Debug {
