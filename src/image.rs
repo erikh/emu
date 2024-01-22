@@ -1,6 +1,8 @@
-use crate::storage::{DirectoryStorageHandler, StorageHandler};
+use super::traits::ImageHandler;
+use crate::util::path_exists;
 use anyhow::{anyhow, Result};
 use std::{
+    fs::remove_file,
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -19,57 +21,54 @@ pub fn qemu_img_name() -> String {
     )
 }
 
-pub trait Imager {
-    fn import(&self, name: &str, orig_file: PathBuf, format: &str) -> Result<()>;
-    fn create(&self, name: &str, gbs: usize) -> Result<()>;
-    fn clone(&self, orig: &str, new: &str) -> Result<()>;
+#[derive(Debug, Clone)]
+pub struct QEmuImageHandler {
+    format: String,
 }
 
-pub struct QEmuImager {
-    pub image_format: &'static str,
-    storage: DirectoryStorageHandler,
-}
-
-impl QEmuImager {
-    pub fn new(image_format: &'static str, storage: DirectoryStorageHandler) -> Self {
-        QEmuImager {
-            image_format,
-            storage,
-        }
-    }
-}
-
-impl Default for QEmuImager {
+impl Default for QEmuImageHandler {
     fn default() -> Self {
-        Self::new(QEMU_IMG_DEFAULT_FORMAT, DirectoryStorageHandler::default())
+        Self {
+            format: QEMU_IMG_DEFAULT_FORMAT.to_string(),
+        }
     }
 }
 
-impl Imager for QEmuImager {
-    fn import(&self, name: &str, orig_file: PathBuf, format: &str) -> Result<()> {
-        if self.storage.vm_exists(name) {
-            return Err(anyhow!(
-                "file already exists, please delete the original vm",
-            ));
-        }
-
-        match self.storage.vm_root(name) {
-            Ok(path) => std::fs::create_dir_all(path)?,
-            Err(e) => return Err(e),
-        };
-
-        let filename = qemu_img_name();
-
-        let status = Command::new(&filename)
+impl ImageHandler for QEmuImageHandler {
+    fn import(&self, new_file: PathBuf, orig_file: PathBuf, format: String) -> Result<()> {
+        Command::new(QEMU_IMG_PATH)
             .args(vec![
                 "convert",
                 "-f",
-                format,
+                &format,
                 "-O",
-                QEMU_IMG_DEFAULT_FORMAT,
+                &self.format,
                 orig_file.to_str().unwrap(),
-                &self.storage.vm_path(name, &filename)?,
+                new_file.to_str().unwrap(),
             ])
+            .status()?;
+        Ok(())
+    }
+
+    fn create(&self, target: PathBuf, gbs: usize) -> Result<()> {
+        let filename = target.join(qemu_img_name());
+
+        if path_exists(target.clone()) {
+            return Err(anyhow!(
+                "filename already exists; did you already create this vm?",
+            ));
+        }
+
+        let status = Command::new(QEMU_IMG_PATH)
+            .args(vec![
+                "create",
+                "-f",
+                &self.format,
+                filename.to_str().unwrap(),
+                &format!("{}G", gbs),
+            ])
+            .stderr(Stdio::null())
+            .stdout(Stdio::null())
             .status();
 
         match status {
@@ -87,70 +86,15 @@ impl Imager for QEmuImager {
         }
     }
 
-    fn clone(&self, orig: &str, new: &str) -> Result<()> {
-        if !self.storage.valid_filename(orig) || !self.storage.valid_filename(new) {
-            return Err(anyhow!("vm names are invalid"));
+    fn remove(&self, disk: PathBuf) -> Result<()> {
+        if !path_exists(disk.clone()) {
+            return Err(anyhow!("filename does not exist"));
         }
 
-        for disk in self.storage.disk_list(orig)? {
-            let filename = disk.file_name().unwrap().to_str().unwrap();
-            if !self.storage.vm_path_exists(orig, filename) {
-                return Err(anyhow!("original does not exist"));
-            }
-
-            if self.storage.vm_path_exists(new, filename) {
-                return Err(anyhow!("target already exists"));
-            }
-
-            match std::fs::copy(
-                self.storage.vm_path(orig, filename).unwrap(),
-                self.storage.vm_path(new, filename).unwrap(),
-            ) {
-                Ok(_) => {}
-                Err(e) => return Err(anyhow!(e)),
-            }
-        }
-
-        Ok(())
+        Ok(remove_file(disk)?)
     }
 
-    fn create(&self, name: &str, gbs: usize) -> Result<()> {
-        let filename = qemu_img_name();
-
-        if self.storage.vm_path_exists(name, &filename) {
-            return Err(anyhow!(
-                "filename already exists; did you already create this vm?",
-            ));
-        }
-
-        if let Ok(filename) = self.storage.vm_path(name, &filename) {
-            let status = Command::new(QEMU_IMG_PATH)
-                .args(vec![
-                    "create",
-                    "-f",
-                    self.image_format,
-                    &filename,
-                    &format!("{}G", gbs),
-                ])
-                .stderr(Stdio::null())
-                .stdout(Stdio::null())
-                .status();
-
-            match status {
-                Ok(st) => {
-                    if st.success() {
-                        return Ok(());
-                    } else {
-                        return Err(anyhow!(
-                            "process exited with code: {}",
-                            st.code().expect("unknown")
-                        ));
-                    }
-                }
-                Err(e) => return Err(anyhow!(e)),
-            }
-        } else {
-            Err(anyhow!("could not derive path name from vm name"))
-        }
+    fn clone_image(&self, old: PathBuf, new: PathBuf) -> Result<()> {
+        Ok(std::fs::copy(old, new).map(|_| ())?)
     }
 }

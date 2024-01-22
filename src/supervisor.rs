@@ -72,9 +72,7 @@ impl SupervisorStorageHandler for SystemdSupervisorStorage {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct NullSupervisorStorage {
-    supervised: bool,
-}
+pub struct NullSupervisorStorage;
 
 impl SupervisorStorageHandler for NullSupervisorStorage {
     fn list(&self) -> Result<Vec<String>> {

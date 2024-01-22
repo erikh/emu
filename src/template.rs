@@ -1,4 +1,4 @@
-use crate::{launcher, storage::SystemdStorage};
+use super::vm::VM;
 use anyhow::{anyhow, Result};
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
@@ -11,7 +11,7 @@ Description=Virtual Machine: {vm_name}
 
 [Service]
 Type=simple
-ExecStart={command} {{for value in args}}{value} {{ endfor }}
+ExecStart={emu_path} run -e {vm_name}
 TimeoutStopSec=30
 ExecStop={emu_path} shutdown {vm_name}
 KillSignal=SIGCONT
@@ -24,17 +24,13 @@ WantedBy=default.target
 #[derive(Serialize)]
 pub struct Data {
     vm_name: String,
-    command: String,
-    args: Vec<String>,
     emu_path: String,
 }
 
 impl Data {
-    pub fn new(vm_name: String, command: String, args: Vec<String>) -> Self {
+    pub fn new(vm_name: String) -> Self {
         Self {
             vm_name,
-            command,
-            args,
             emu_path: match std::env::current_exe() {
                 Ok(path) => path.to_str().unwrap().to_string(),
                 Err(_) => EMU_DEFAULT_PATH.to_string(),
@@ -43,37 +39,16 @@ impl Data {
     }
 }
 
-pub struct Systemd {
-    emu: Box<dyn launcher::Emulator>,
-    systemd_storage: SystemdStorage,
-}
+#[derive(Debug, Clone, Default)]
+pub struct Systemd;
 
 impl Systemd {
-    pub fn new(emu: Box<dyn launcher::Emulator>, systemd_storage: SystemdStorage) -> Self {
-        Self {
-            emu,
-            systemd_storage,
-        }
-    }
-
-    fn template(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<String> {
+    pub fn template(&self, vm: &VM) -> Result<String> {
         let mut t = TinyTemplate::new();
         t.add_template("systemd", SYSTEMD_UNIT)?;
-        let args = self.emu.args(vm_name, rc)?;
-
-        let data = Data::new(vm_name.to_string(), self.emu.bin()?, args);
+        let data = Data::new(vm.name());
         match t.render("systemd", &data) {
             Ok(x) => Ok(x),
-            Err(e) => Err(anyhow!(e)),
-        }
-    }
-
-    pub fn write(&self, vm_name: &str, rc: &launcher::RuntimeConfig) -> Result<()> {
-        let path = self.systemd_storage.service_filename(vm_name)?;
-        let template = self.template(vm_name, rc)?;
-
-        match std::fs::write(path, template) {
-            Ok(_) => Ok(()),
             Err(e) => Err(anyhow!(e)),
         }
     }
