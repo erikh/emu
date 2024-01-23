@@ -1,6 +1,8 @@
 -   latest:
-    -   `emu shutdown` now waits for qemu to quit before quitting itself
+    -   `emu shutdown` now waits for qemu to quit before quitting itself.
+        -   Provide the `-n` flag to return to the shell instead of waiting.
     -   Allow `emu ssh` to supply arguments to the underlying `ssh` command.
+    -   Code rewrite: most code has been replaced and re-organized for future enhancements including polymorphism amongst operating systems and hypervisors.
 -   0.2.0:
     -   `emu list-disks` to list disks for a VM.
     -   `emu import` always creates a new disk when importing.
