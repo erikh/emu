@@ -40,7 +40,7 @@ impl CommandHandler {
             let mut v = Vec::new();
 
             for item in self.config.vm_list()? {
-                if item.supervisor().is_active(&item)? {
+                if item.supervisor().is_active(&item).unwrap_or_default() {
                     v.push(item)
                 }
             }
