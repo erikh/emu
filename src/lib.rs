@@ -74,7 +74,7 @@ pub async fn evaluate() -> Result<()> {
             handler.run(&vm, detach)
         }
         CommandType::List { running } => handler.list(running),
-        CommandType::Shutdown { name } => handler.shutdown(&name.into()),
+        CommandType::Shutdown { name, nowait } => handler.shutdown(&name.into(), nowait),
         CommandType::QMP {
             name,
             command,

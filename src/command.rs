@@ -85,6 +85,9 @@ pub enum CommandType {
     },
     /// Gracefully shutdown a pre-created VM
     Shutdown {
+        /// Do not wait for the VM to terminate
+        #[arg(short, long, default_value = "false")]
+        nowait: bool,
         /// Name of VM
         name: String,
     },

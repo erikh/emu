@@ -285,8 +285,19 @@ impl CommandHandler {
         Ok(())
     }
 
-    pub fn shutdown(&self, vm: &VM) -> Result<()> {
-        self.launcher.shutdown_immediately(vm)
+    pub fn shutdown(&self, vm: &VM, nowait: bool) -> Result<()> {
+        if nowait {
+            self.launcher.shutdown_immediately(vm)
+        } else {
+            if let Ok(status) = self.launcher.shutdown_wait(vm) {
+                println!(
+                    "qemu exited with {} status",
+                    status.code().unwrap_or_default()
+                );
+            }
+
+            Ok(())
+        }
     }
 
     pub fn run(&self, vm: &VM, detach: bool) -> Result<()> {
