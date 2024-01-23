@@ -150,10 +150,7 @@ impl SupervisorHandler for SystemdSupervisor {
     }
 
     fn is_active(&self, vm: &VM) -> Result<bool> {
-        Ok(
-            systemd(vec!["is-active", &self.storage().service_name(vm), "-q"])
-                .map_or_else(|_| false, |_| true),
-        )
+        Ok(systemd(vec!["is-active", &self.storage().service_name(vm), "-q"]).is_ok())
     }
 
     fn pidof(&self, vm: &VM) -> Result<u32> {

@@ -5,7 +5,7 @@ pub fn pid_running(pid: u32) -> bool {
 }
 
 pub fn path_exists(path: PathBuf) -> bool {
-    std::fs::metadata(path).map_or_else(|_| false, |_| true)
+    std::fs::metadata(path).is_ok()
 }
 
 pub fn valid_filename(name: &str) -> bool {
