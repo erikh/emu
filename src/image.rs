@@ -76,15 +76,15 @@ impl ImageHandler for QEmuImageHandler {
         match status {
             Ok(st) => {
                 if st.success() {
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return Err(anyhow!(
+                    Err(anyhow!(
                         "process exited with code: {}",
                         st.code().expect("unknown")
-                    ));
+                    ))
                 }
             }
-            Err(e) => return Err(anyhow!(e)),
+            Err(e) => Err(anyhow!(e)),
         }
     }
 
