@@ -53,7 +53,7 @@ impl ImageHandler for QEmuImageHandler {
     fn create(&self, target: PathBuf, gbs: usize) -> Result<()> {
         let filename = target.join(qemu_img_name());
 
-        if path_exists(target.clone()) {
+        if path_exists(filename.clone()) {
             return Err(anyhow!(
                 "filename already exists; did you already create this vm?",
             ));
@@ -95,6 +95,6 @@ impl ImageHandler for QEmuImageHandler {
     }
 
     fn clone_image(&self, old: PathBuf, new: PathBuf) -> Result<()> {
-        Ok(std::fs::copy(old, new).map(|_| ())?)
+        Ok(std::fs::copy(old, new).and_then(|_| Ok(()))?)
     }
 }

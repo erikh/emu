@@ -106,11 +106,14 @@ impl CommandHandler {
 
     pub fn supervised(&self) -> Result<()> {
         for item in self.config.vm_list()? {
-            let status = match item.supervisor().is_active(&item) {
-                Ok(_) => "running",
-                Err(_) => "not running",
-            };
-            println!("{}: {}", item, status)
+            if item.supervisor().supervised() {
+                let status = if item.supervisor().is_active(&item).unwrap_or_default() {
+                    "running"
+                } else {
+                    "not running"
+                };
+                println!("{}: {}", item, status)
+            }
         }
 
         Ok(())
@@ -273,9 +276,10 @@ impl CommandHandler {
     }
 
     pub fn is_active(&self, vm: &VM) -> Result<()> {
-        match vm.supervisor().is_active(&vm) {
-            Ok(_) => println!("{} is active", vm),
-            Err(_) => println!("{} is not active", vm),
+        if vm.supervisor().is_active(&vm).unwrap_or_default() {
+            println!("{} is active", vm);
+        } else {
+            println!("{} is not active", vm);
         }
 
         Ok(())
