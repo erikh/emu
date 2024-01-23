@@ -111,11 +111,12 @@ impl ImageHandler for QEmuImageHandler {
         pb.unit_scale = true;
         pb.unit = "B".to_string();
         for _ in 0..len / 4096 {
-            oldf.read(&mut buf)?;
-            newf.write(&buf)?;
-            newf.flush()?;
-            pb.update(4096)?;
+            if let Ok(size) = oldf.read(&mut buf) {
+                pb.update(newf.write(&buf[..size])?)?;
+            }
         }
+
+        newf.flush()?;
         Ok(())
     }
 }
