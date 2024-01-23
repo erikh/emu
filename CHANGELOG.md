@@ -1,4 +1,4 @@
--   latest:
+-   0.3.0:
     -   `emu shutdown` now waits for qemu to quit before quitting itself.
         -   Provide the `-n` flag to return to the shell instead of waiting.
     -   Allow `emu ssh` to supply arguments to the underlying `ssh` command.
