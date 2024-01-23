@@ -1,8 +1,10 @@
 use super::traits::ImageHandler;
 use crate::util::path_exists;
 use anyhow::{anyhow, Result};
+use kdam::{tqdm, BarExt};
 use std::{
     fs::remove_file,
+    io::{Read, Write},
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -95,6 +97,25 @@ impl ImageHandler for QEmuImageHandler {
     }
 
     fn clone_image(&self, old: PathBuf, new: PathBuf) -> Result<()> {
-        Ok(std::fs::copy(old, new).and_then(|_| Ok(()))?)
+        let mut oldf = std::fs::OpenOptions::new();
+        oldf.read(true);
+        let mut oldf = oldf.open(old)?;
+        let mut newf = std::fs::OpenOptions::new();
+        newf.write(true);
+        newf.create_new(true);
+        let mut newf = newf.open(new.clone())?;
+        let mut buf = [0_u8; 4096];
+        let len = oldf.metadata()?.len();
+        let mut pb = tqdm!(total = len.try_into().unwrap());
+        pb.set_description(new.file_name().unwrap().to_string_lossy());
+        pb.unit_scale = true;
+        pb.unit = "B".to_string();
+        for _ in 0..len / 4096 {
+            oldf.read(&mut buf)?;
+            newf.write(&buf)?;
+            newf.flush()?;
+            pb.update(4096)?;
+        }
+        Ok(())
     }
 }
