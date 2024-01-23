@@ -36,9 +36,7 @@ impl Default for CommandHandler {
 
 impl CommandHandler {
     pub fn list(&self, running: bool) -> Result<()> {
-        if !running {
-            self.config.vm_list()
-        } else {
+        if running {
             let mut v = Vec::new();
 
             for item in self.config.vm_list()? {
@@ -48,6 +46,8 @@ impl CommandHandler {
             }
 
             Ok(v)
+        } else {
+            self.config.vm_list()
         }?
         .iter()
         .for_each(|vm| {
@@ -55,8 +55,17 @@ impl CommandHandler {
 
             let (status, is_running) = if supervisor.supervised() {
                 match supervisor.is_active(vm) {
-                    Ok(_) => ("supervised: running".to_string(), true),
-                    Err(_) => ("supervised: not running".to_string(), false),
+                    Ok(res) => {
+                        if res {
+                            ("supervised: running".to_string(), true)
+                        } else {
+                            ("supervised: not running".to_string(), false)
+                        }
+                    }
+                    Err(e) => (
+                        format!("supervised: could not determine status: {}", e.to_string()),
+                        false,
+                    ),
                 }
             } else if supervisor.is_active(vm).unwrap_or_default() {
                 (format!("pid: {}", supervisor.pidof(vm).unwrap()), true)

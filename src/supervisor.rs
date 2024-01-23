@@ -107,13 +107,13 @@ impl SupervisorStorageHandler for NullSupervisorStorage {
 fn systemd(mut command: Vec<&str>) -> Result<()> {
     command.insert(0, "--user");
     match Command::new("/bin/systemctl")
-        .args(command)
+        .args(command.clone())
         .stderr(Stdio::null())
         .stdout(Stdio::null())
         .status()
     {
         Ok(es) => {
-            if es.success() {
+            if matches!(es.code(), Some(0)) {
                 Ok(())
             } else {
                 Err(anyhow!("systemctl exited uncleanly: {}", es))
@@ -189,9 +189,12 @@ impl SupervisorHandler for PidSupervisor {
     }
 
     fn is_active(&self, vm: &VM) -> Result<bool> {
-        Ok(pid_running(
-            std::fs::read_to_string(self.config.pidfile(&vm))?.parse::<u32>()?,
-        ))
+        let f = match std::fs::read_to_string(self.config.pidfile(&vm)) {
+            Ok(f) => f,
+            Err(_) => return Ok(false),
+        };
+
+        Ok(pid_running(f.parse::<u32>()?))
     }
 
     fn pidof(&self, vm: &VM) -> Result<u32> {
