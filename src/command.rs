@@ -133,6 +133,18 @@ pub enum CommandType {
         /// Name of VM
         name: String,
     },
+    Save {
+        /// Name of VM
+        name: String,
+    },
+    Load {
+        /// Name of VM
+        name: String,
+    },
+    ClearState {
+        /// Name of VM
+        name: String,
+    },
 }
 
 #[derive(Debug, Subcommand, Clone)]
