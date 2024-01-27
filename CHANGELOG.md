@@ -8,6 +8,7 @@
             -   You must clear a saved state before creating a new one. Saving twice results in an error. May change this.
     -   Underpinnings now include a semi-comprehensive QMP client for qemu.
     -   `emu clone` now has a cool progress meter for copying large files
+        -   Also, you can now pass `-c` to copy the configuration as well as the image data. Default is off.
 -   0.3.0:
     -   `emu shutdown` now waits for qemu to quit before quitting itself.
         -   Provide the `-n` flag to return to the shell instead of waiting.
