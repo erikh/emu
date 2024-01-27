@@ -7,10 +7,11 @@ It contains commands to:
 -   Manage VMs as a system-wide fleet
     -   List all VMs in one place, along with their run status
     -   Clone and Import VMs from other sources
--   Create, Delete, Start and Stop VMs
+-   Create, Delete, Start, Stop, and Reboot VMs
     -   ISOs can be attached
     -   You can start VMs with or without graphical screens
     -   `emu` does not have to be running to maintain your VM
+-   Maintain snapshots and save states
 -   Supervise VMs with systemd
     -   Uses the user profile (`systemctl --user`)
     -   Knows about which systemd units its maintaining
