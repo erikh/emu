@@ -32,6 +32,14 @@ impl Default for CommandHandler {
 }
 
 impl CommandHandler {
+    pub fn reset(&self, vm: &VM) -> Result<()> {
+        self.launcher.reset(vm)
+    }
+
+    pub fn restart(&self, vm: &VM) -> Result<()> {
+        self.launcher.restart(vm)
+    }
+
     pub fn save_state(&self, vm: &VM) -> Result<()> {
         self.launcher.save_state(vm)
     }

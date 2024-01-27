@@ -25,6 +25,8 @@ pub async fn evaluate() -> Result<()> {
     let args = Commands::parse();
 
     match args.command {
+        CommandType::Restart { name } => handler.restart(&name.into()),
+        CommandType::Reset { name } => handler.reset(&name.into()),
         CommandType::Save { name } => handler.save_state(&name.into()),
         CommandType::Load { name } => handler.load_state(&name.into()),
         CommandType::ClearState { name } => handler.clear_state(&name.into()),

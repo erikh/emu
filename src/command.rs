@@ -151,6 +151,16 @@ pub enum CommandType {
         /// Name of VM
         name: String,
     },
+    /// Hard Reset a VM
+    Reset {
+        /// Name of VM
+        name: String,
+    },
+    /// Shutdown and re-launch the VM. Does not work with supervisors.
+    Restart {
+        /// Name of VM
+        name: String,
+    },
 }
 
 #[derive(Debug, Subcommand, Clone)]

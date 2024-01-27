@@ -57,6 +57,7 @@ pub trait Launcher: Debug {
     fn launch_detached(&self, vm: &VM) -> Result<()>;
     fn shutdown_wait(&self, vm: &VM) -> Result<ExitStatus>;
     fn shutdown_immediately(&self, vm: &VM) -> Result<()>;
+    fn reset(&self, vm: &VM) -> Result<()>;
     fn snapshot(&self, vm: &VM, name: String) -> Result<()>;
     fn restore(&self, vm: &VM, name: String) -> Result<()>;
     fn delete_snapshot(&self, vm: &VM, name: String) -> Result<()>;
@@ -71,5 +72,10 @@ pub trait Launcher: Debug {
 
     fn clear_state(&self, vm: &VM) -> Result<()> {
         self.delete_snapshot(vm, DEFAULT_SNAPSHOT_TAG.to_string())
+    }
+
+    fn restart(&self, vm: &VM) -> Result<()> {
+        self.shutdown_wait(vm)?;
+        self.launch_detached(vm)
     }
 }

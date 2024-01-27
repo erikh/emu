@@ -177,6 +177,13 @@ impl Launcher for QEmuLauncher {
         Ok(())
     }
 
+    fn reset(&self, vm: &VM) -> Result<()> {
+        self.qmp_command(vm, |mut c| {
+            c.send_command::<GenericReturn>("system_reset", None)?;
+            Ok(())
+        })
+    }
+
     fn shutdown_immediately(&self, vm: &VM) -> Result<()> {
         self.qmp_command(vm, |mut c| {
             c.send_command::<GenericReturn>("system_powerdown", None)?;
