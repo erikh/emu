@@ -343,15 +343,41 @@ impl CommandHandler {
             return Err(anyhow!("vm already exists"));
         }
 
+        // this next little bit just aligns the descriptions so the progress meters are uniform on
+        // the screen.
+
         let images = self.config.disk_list(from)?;
 
+        let mut descriptions = Vec::new();
+        let mut len = 0;
+        for img in &images {
+            let l = img.file_name().unwrap().to_string_lossy().len();
+            if l > len {
+                len = l
+            }
+        }
+
+        for img in images.clone() {
+            let mut s = img.file_name().unwrap().to_string_lossy().to_string();
+
+            if s.len() < len {
+                s += &" ".repeat(len - s.len())
+            }
+
+            descriptions.push(s.to_string())
+        }
+
         std::fs::create_dir_all(self.config.vm_root(to))?;
-        for img in images {
+        for (x, img) in images.iter().enumerate() {
             self.image.clone_image(
+                descriptions[x].to_string(),
                 img.clone(),
                 self.config.vm_root(to).join(img.file_name().unwrap()),
             )?;
-            println!();
+
+            if x < images.len() - 1 {
+                println!();
+            }
         }
 
         if config && self.config.config_path(from).exists() {

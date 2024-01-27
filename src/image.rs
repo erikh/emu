@@ -96,7 +96,7 @@ impl ImageHandler for QEmuImageHandler {
         Ok(remove_file(disk)?)
     }
 
-    fn clone_image(&self, old: PathBuf, new: PathBuf) -> Result<()> {
+    fn clone_image(&self, description: String, old: PathBuf, new: PathBuf) -> Result<()> {
         let mut oldf = std::fs::OpenOptions::new();
         oldf.read(true);
         let mut oldf = oldf.open(old)?;
@@ -107,7 +107,7 @@ impl ImageHandler for QEmuImageHandler {
         let mut buf = [0_u8; 4096];
         let len = oldf.metadata()?.len();
         let mut pb = tqdm!(total = len.try_into().unwrap());
-        pb.set_description(new.file_name().unwrap().to_string_lossy());
+        pb.set_description(description);
         pb.unit_scale = true;
         pb.unit = "B".to_string();
         for _ in 0..len / 4096 {

@@ -15,7 +15,7 @@ pub trait ImageHandler: Debug {
     fn import(&self, new_file: PathBuf, orig_file: PathBuf, format: String) -> Result<()>;
     fn create(&self, target: PathBuf, gbs: usize) -> Result<()>;
     fn remove(&self, disk: PathBuf) -> Result<()>;
-    fn clone_image(&self, old: PathBuf, new: PathBuf) -> Result<()>;
+    fn clone_image(&self, description: String, old: PathBuf, new: PathBuf) -> Result<()>;
 }
 
 pub trait SupervisorHandler: Debug {
