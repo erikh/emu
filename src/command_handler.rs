@@ -79,7 +79,7 @@ impl CommandHandler {
             } else if supervisor.is_active(vm).unwrap_or_default() {
                 (format!("pid: {}", supervisor.pidof(vm).unwrap()), true)
             } else {
-                ("unsupervised".to_string(), false)
+                ("stopped".to_string(), false)
             };
 
             if running && is_running || !running {
