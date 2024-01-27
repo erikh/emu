@@ -40,6 +40,18 @@ impl CommandHandler {
         self.launcher.restart(vm)
     }
 
+    pub fn snapshot_save(&self, vm: &VM, snapshot: String) -> Result<()> {
+        self.launcher.snapshot(vm, snapshot)
+    }
+
+    pub fn snapshot_load(&self, vm: &VM, snapshot: String) -> Result<()> {
+        self.launcher.restore(vm, snapshot)
+    }
+
+    pub fn snapshot_delete(&self, vm: &VM, snapshot: String) -> Result<()> {
+        self.launcher.delete_snapshot(vm, snapshot)
+    }
+
     pub fn save_state(&self, vm: &VM) -> Result<()> {
         self.launcher.save_state(vm)
     }

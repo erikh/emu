@@ -131,6 +131,9 @@ pub enum CommandType {
     /// Show and manipulate VM configuration
     #[command(subcommand)]
     Config(ConfigSubcommand),
+    /// Show and manipulate VM snapshots
+    #[command(subcommand)]
+    Snapshot(SnapshotSubcommand),
     /// Is this VM currently active?
     IsActive {
         /// Name of VM
@@ -189,6 +192,31 @@ pub enum ConfigSubcommand {
     /// Adjust port mappings
     #[command(subcommand)]
     Port(ConfigPortSubcommand),
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum SnapshotSubcommand {
+    /// Save a snapshot for a VM
+    Save {
+        /// Name of VM
+        name: String,
+        /// Name of snapshot to take (must not already exist)
+        snapshot_name: String,
+    },
+    /// Delete an existing snapshot from a VM
+    Delete {
+        /// Name of VM
+        name: String,
+        /// Name of snapshot to take (must not already exist)
+        snapshot_name: String,
+    },
+    /// Load an existing snapshot from a VM into the current state
+    Load {
+        /// Name of VM
+        name: String,
+        /// Name of snapshot to take (must not already exist)
+        snapshot_name: String,
+    },
 }
 
 #[derive(Debug, Subcommand, Clone)]

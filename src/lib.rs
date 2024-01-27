@@ -14,7 +14,7 @@ pub mod util;
 pub mod vm;
 
 use self::{
-    command::{CommandType, Commands, ConfigPortSubcommand, ConfigSubcommand},
+    command::{CommandType, Commands, ConfigPortSubcommand, ConfigSubcommand, SnapshotSubcommand},
     command_handler::CommandHandler,
 };
 use anyhow::Result;
@@ -30,6 +30,20 @@ pub async fn evaluate() -> Result<()> {
         CommandType::Save { name } => handler.save_state(&name.into()),
         CommandType::Load { name } => handler.load_state(&name.into()),
         CommandType::ClearState { name } => handler.clear_state(&name.into()),
+        CommandType::Snapshot(sub) => match sub {
+            SnapshotSubcommand::Save {
+                name,
+                snapshot_name,
+            } => handler.snapshot_save(&name.into(), snapshot_name),
+            SnapshotSubcommand::Load {
+                name,
+                snapshot_name,
+            } => handler.snapshot_load(&name.into(), snapshot_name),
+            SnapshotSubcommand::Delete {
+                name,
+                snapshot_name,
+            } => handler.snapshot_delete(&name.into(), snapshot_name),
+        },
         CommandType::Config(sub) => match sub {
             ConfigSubcommand::Set { name, key, value } => {
                 handler.config_set(&name.into(), key, value)
