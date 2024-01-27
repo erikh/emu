@@ -1,4 +1,9 @@
 -   latest:
+    -   Named snapshots are now under the `snapshot` sub-commmand structure and provide the following features for now:
+        -   `emu snapshot save <vm> <name>` saves a new snapshot to the VM. The snapshot's name must not already be saved.
+        -   `emu snapshot load <vm> <name>` loads snapshot into the VM's current running state.
+        -   `emu snapshot delete <vm> <name>` deletes snapshot state.
+        -   There is no listing command yet; you must remember your names for now. One thing at a time! :)
     -   `emu reset` performs a hard reset of a VM.
     -   `emu restart` shuts the VM down and waits, and then spawns it again. Will re-create windows, and should not be used with supervisors/systemd.
 -   0.4.0:
