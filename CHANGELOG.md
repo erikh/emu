@@ -1,3 +1,6 @@
+-   latest:
+    -   `emu reset` performs a hard reset of a VM.
+    -   `emu restart` shuts the VM down and waits, and then spawns it again. Will re-create windows, and should not be used with supervisors/systemd.
 -   0.4.0:
     -   Snapshots! The following commands now manage a single, easy-to-use snapshot for quickly managing state.
         -   `emu save <vm>` will save your VM's current state
