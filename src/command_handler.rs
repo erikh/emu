@@ -6,12 +6,9 @@ use super::{
     traits::{ConfigStorageHandler, ImageHandler, Launcher, SupervisorHandler},
     vm::VM,
 };
-use crate::{
-    qmp::{Client, UnixSocket},
-    util::valid_filename,
-};
+use crate::{qmp::client::Client, util::valid_filename};
 use anyhow::{anyhow, Result};
-use std::{os::unix::net::UnixStream, path::PathBuf, process::Command, sync::Arc};
+use std::{path::PathBuf, process::Command, sync::Arc};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, Interest},
     sync::Mutex,
@@ -35,6 +32,18 @@ impl Default for CommandHandler {
 }
 
 impl CommandHandler {
+    pub fn save_state(&self, vm: &VM) -> Result<()> {
+        self.launcher.save_state(vm)
+    }
+
+    pub fn load_state(&self, vm: &VM) -> Result<()> {
+        self.launcher.load_state(vm)
+    }
+
+    pub fn clear_state(&self, vm: &VM) -> Result<()> {
+        self.launcher.clear_state(vm)
+    }
+
     pub fn list(&self, running: bool) -> Result<()> {
         if running {
             let mut v = Vec::new();
@@ -398,16 +407,18 @@ impl CommandHandler {
     }
 
     pub fn qmp(&self, vm: &VM, command: &str, args: Option<&str>) -> Result<()> {
-        let stream = UnixStream::connect(self.config.monitor_path(vm))?;
-        let mut us = UnixSocket::new(stream)?;
+        let mut us = Client::new(self.config.monitor_path(vm))?;
         us.handshake()?;
-        us.send_command("qmp_capabilities", None)?;
+        // this command hangs if the type isn't provided (for some reason)
+        us.send_command::<serde_json::Value>("qmp_capabilities", None)?;
         let val = match args {
-            Some(args) => us.send_command(command, Some(serde_json::from_str(args)?))?,
-            None => us.send_command(command, None)?,
+            Some(args) => {
+                us.send_command::<serde_json::Value>(command, Some(serde_json::from_str(args)?))?
+            }
+            None => us.send_command::<serde_json::Value>(command, None)?,
         };
 
-        println!("{}", val);
+        println!("{}", serde_json::to_string_pretty(&val)?);
         Ok(())
     }
 }

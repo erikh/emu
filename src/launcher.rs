@@ -4,15 +4,11 @@ use super::{
     traits::{ConfigStorageHandler, Launcher},
     vm::VM,
 };
-use crate::{
-    qmp::{Client, UnixSocket},
-    util::pid_running,
-};
+use crate::{qmp::client::Client, util::pid_running};
 use anyhow::{anyhow, Result};
 use fork::{daemon, Fork};
 use std::{
     fs::{read_to_string, remove_file},
-    os::unix::net::UnixStream,
     path::PathBuf,
     process::Command,
     process::ExitStatus,
@@ -104,7 +100,7 @@ impl QEmuLauncher {
         for (x, disk) in disk_list.iter().enumerate() {
             disks.push("-drive".to_string());
             disks.push(format!(
-                "driver={},if={},file={},cache=none,media=disk,index={}",
+                "driver={},if={},file={},cache=none,media=disk,index={},snapshot=on",
                 QEMU_IMG_DEFAULT_FORMAT,
                 config.machine.image_interface,
                 disk.display(),
@@ -118,6 +114,7 @@ impl QEmuLauncher {
             "-nodefaults",
             "-chardev",
             format!("socket,server=on,wait=off,id=char0,path={}", mon.display()),
+            "-snapshot",
             "-mon",
             "chardev=char0,mode=control,pretty=on",
             "-machine",
@@ -145,21 +142,45 @@ impl QEmuLauncher {
 
         Ok(v)
     }
-}
 
-impl Launcher for QEmuLauncher {
-    fn shutdown_immediately(&self, vm: &VM) -> Result<()> {
-        match UnixStream::connect(self.config.monitor_path(vm)) {
-            Ok(stream) => {
-                let mut us = UnixSocket::new(stream)?;
+    pub fn qmp_command(&self, vm: &VM, mut f: impl FnMut(Client) -> Result<()>) -> Result<()> {
+        match Client::new(self.config.monitor_path(vm)) {
+            Ok(mut us) => {
                 us.handshake()?;
-                us.send_command("qmp_capabilities", None)?;
-                us.send_command("system_powerdown", None)?;
+                us.send_command::<serde_json::Value>("qmp_capabilities", None)?;
+                f(us)?;
             }
             Err(_) => return Err(anyhow!("{} is not running or not monitored", vm)),
         }
 
         Ok(())
+    }
+}
+
+impl Launcher for QEmuLauncher {
+    fn delete_snapshot(&self, vm: &VM, name: String) -> Result<()> {
+        self.qmp_command(vm, |mut c| c.snapshot_delete(&name))?;
+        eprintln!("Deleted snapshot '{}'", name);
+        Ok(())
+    }
+
+    fn snapshot(&self, vm: &VM, name: String) -> Result<()> {
+        self.qmp_command(vm, |mut c| c.snapshot_save(&name))?;
+        eprintln!("Saved current state to snapshot '{}'", name);
+        Ok(())
+    }
+
+    fn restore(&self, vm: &VM, name: String) -> Result<()> {
+        self.qmp_command(vm, |mut c| c.snapshot_load(&name))?;
+        eprintln!("Restored from snapshot '{}'", name);
+        Ok(())
+    }
+
+    fn shutdown_immediately(&self, vm: &VM) -> Result<()> {
+        self.qmp_command(vm, |mut c| {
+            c.send_command::<serde_json::Value>("system_powerdown", None)?;
+            Ok(())
+        })
     }
 
     fn shutdown_wait(&self, vm: &VM) -> Result<ExitStatus> {

@@ -2,6 +2,8 @@ use super::vm::VM;
 use anyhow::Result;
 use std::{fmt::Debug, path::PathBuf, process::ExitStatus, sync::Arc};
 
+const DEFAULT_SNAPSHOT_TAG: &str = "[EMU-Suspend]";
+
 #[derive(Debug, Clone, Default)]
 pub enum Supervisors {
     Systemd,
@@ -55,4 +57,19 @@ pub trait Launcher: Debug {
     fn launch_detached(&self, vm: &VM) -> Result<()>;
     fn shutdown_wait(&self, vm: &VM) -> Result<ExitStatus>;
     fn shutdown_immediately(&self, vm: &VM) -> Result<()>;
+    fn snapshot(&self, vm: &VM, name: String) -> Result<()>;
+    fn restore(&self, vm: &VM, name: String) -> Result<()>;
+    fn delete_snapshot(&self, vm: &VM, name: String) -> Result<()>;
+
+    fn save_state(&self, vm: &VM) -> Result<()> {
+        self.snapshot(vm, DEFAULT_SNAPSHOT_TAG.to_string())
+    }
+
+    fn load_state(&self, vm: &VM) -> Result<()> {
+        self.restore(vm, DEFAULT_SNAPSHOT_TAG.to_string())
+    }
+
+    fn clear_state(&self, vm: &VM) -> Result<()> {
+        self.delete_snapshot(vm, DEFAULT_SNAPSHOT_TAG.to_string())
+    }
 }

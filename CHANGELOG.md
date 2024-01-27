@@ -1,4 +1,12 @@
 -   latest:
+    -   Snapshots! The following commands now manage a single, easy-to-use snapshot for quickly managing state.
+        -   `emu save <vm>` will save your VM's current state
+        -   `emu load <vm>` will load the saved state (as many times as you want)
+        -   `emu clear-state <vm>` will clear the saved state.
+        -   Notes:
+            -   Lots of operations in a rush seem to crash qemu easily. Still looking into this.
+            -   You must clear a saved state before creating a new one. Saving twice results in an error. May change this.
+    -   Underpinnings now include a semi-comprehensive QMP client for qemu.
     -   `emu clone` now has a cool progress meter for copying large files
 -   0.3.0:
     -   `emu shutdown` now waits for qemu to quit before quitting itself.

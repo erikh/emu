@@ -4,6 +4,7 @@ pub mod config;
 pub mod config_storage;
 pub mod image;
 pub mod launcher;
+#[allow(dead_code)]
 pub mod network;
 pub mod qmp;
 pub mod supervisor;
@@ -24,6 +25,9 @@ pub async fn evaluate() -> Result<()> {
     let args = Commands::parse();
 
     match args.command {
+        CommandType::Save { name } => handler.save_state(&name.into()),
+        CommandType::Load { name } => handler.load_state(&name.into()),
+        CommandType::ClearState { name } => handler.clear_state(&name.into()),
         CommandType::Config(sub) => match sub {
             ConfigSubcommand::Set { name, key, value } => {
                 handler.config_set(&name.into(), key, value)

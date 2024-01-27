@@ -13,10 +13,8 @@ pub struct Network {
 #[derive(Debug, Clone)]
 pub struct Interface {
     name: String,
-    #[allow(dead_code)]
     peer_name: String,
     index: u32,
-    #[allow(dead_code)]
     id: u32,
 }
 
