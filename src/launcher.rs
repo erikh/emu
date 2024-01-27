@@ -161,19 +161,19 @@ impl QEmuLauncher {
 impl Launcher for QEmuLauncher {
     fn delete_snapshot(&self, vm: &VM, name: String) -> Result<()> {
         self.qmp_command(vm, |mut c| c.snapshot_delete(&name))?;
-        eprintln!("Deleted snapshot '{}'", name);
+        println!("Deleted snapshot '{}'", name);
         Ok(())
     }
 
     fn snapshot(&self, vm: &VM, name: String) -> Result<()> {
         self.qmp_command(vm, |mut c| c.snapshot_save(&name))?;
-        eprintln!("Saved current state to snapshot '{}'", name);
+        println!("Saved current state to snapshot '{}'", name);
         Ok(())
     }
 
     fn restore(&self, vm: &VM, name: String) -> Result<()> {
         self.qmp_command(vm, |mut c| c.snapshot_load(&name))?;
-        eprintln!("Restored from snapshot '{}'", name);
+        println!("Restored from snapshot '{}'", name);
         Ok(())
     }
 
@@ -195,7 +195,7 @@ impl Launcher for QEmuLauncher {
             total += amount;
             sleep(amount);
             if amount > Duration::new(10, 0) {
-                eprintln!("Waiting for qemu to quit...");
+                println!("Waiting for qemu to quit...");
                 total = Duration::new(0, 0);
             }
         }

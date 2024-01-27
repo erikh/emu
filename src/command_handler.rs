@@ -351,10 +351,11 @@ impl CommandHandler {
                 img.clone(),
                 self.config.vm_root(to).join(img.file_name().unwrap()),
             )?;
+            println!();
         }
 
         if config && self.config.config_path(from).exists() {
-            eprintln!("Configuration found in {}; copying to {}", from, to);
+            println!("Configuration found in {}; copying to {}", from, to);
             std::fs::copy(self.config.config_path(from), self.config.config_path(to))?;
         }
 
