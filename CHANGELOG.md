@@ -1,4 +1,4 @@
--   latest:
+-   0.4.1:
     -   Named snapshots are now under the `snapshot` sub-commmand structure and provide the following features for now:
         -   `emu snapshot save <vm> <name>` saves a new snapshot to the VM. The snapshot's name must not already be saved.
         -   `emu snapshot load <vm> <name>` loads snapshot into the VM's current running state.
