@@ -338,7 +338,7 @@ impl CommandHandler {
         )
     }
 
-    pub fn clone(&self, from: &VM, to: &VM, config: bool) -> Result<()> {
+    pub fn clone_vm(&self, from: &VM, to: &VM, config: bool) -> Result<()> {
         if self.config.vm_exists(to) {
             return Err(anyhow!("vm already exists"));
         }

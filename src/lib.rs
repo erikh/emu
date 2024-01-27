@@ -85,7 +85,9 @@ pub async fn evaluate() -> Result<()> {
             arguments,
         } => handler.qmp(&name.into(), &command, arguments.as_deref()),
         CommandType::Supervised => handler.supervised(),
-        CommandType::Clone { from, to, config } => handler.clone(&from.into(), &to.into(), config),
+        CommandType::Clone { from, to, config } => {
+            handler.clone_vm(&from.into(), &to.into(), config)
+        }
         CommandType::Import {
             format,
             name,
