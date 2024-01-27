@@ -338,17 +338,24 @@ impl CommandHandler {
         )
     }
 
-    pub fn clone(&self, from: &VM, to: &VM) -> Result<()> {
+    pub fn clone(&self, from: &VM, to: &VM, config: bool) -> Result<()> {
         if self.config.vm_exists(to) {
             return Err(anyhow!("vm already exists"));
         }
 
+        let images = self.config.disk_list(from)?;
+
         std::fs::create_dir_all(self.config.vm_root(to))?;
-        for img in self.config.disk_list(from)? {
+        for img in images {
             self.image.clone_image(
                 img.clone(),
                 self.config.vm_root(to).join(img.file_name().unwrap()),
             )?;
+        }
+
+        if config && self.config.config_path(from).exists() {
+            eprintln!("Configuration found in {}; copying to {}", from, to);
+            std::fs::copy(self.config.config_path(from), self.config.config_path(to))?;
         }
 
         Ok(())

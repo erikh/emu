@@ -110,6 +110,9 @@ pub enum CommandType {
     Supervised,
     /// Clone one VM to another
     Clone {
+        /// Copy configuration as well
+        #[arg(short, long, default_value = "false")]
+        config: bool,
         /// VM to clone from
         from: String,
         /// VM to clone to
