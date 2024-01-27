@@ -1,6 +1,7 @@
 use super::{
     config_storage::XDGConfigStorage,
     image::QEMU_IMG_DEFAULT_FORMAT,
+    qmp::messages::GenericReturn,
     traits::{ConfigStorageHandler, Launcher},
     vm::VM,
 };
@@ -147,7 +148,7 @@ impl QEmuLauncher {
         match Client::new(self.config.monitor_path(vm)) {
             Ok(mut us) => {
                 us.handshake()?;
-                us.send_command::<serde_json::Value>("qmp_capabilities", None)?;
+                us.send_command::<GenericReturn>("qmp_capabilities", None)?;
                 f(us)?;
             }
             Err(_) => return Err(anyhow!("{} is not running or not monitored", vm)),
@@ -178,7 +179,7 @@ impl Launcher for QEmuLauncher {
 
     fn shutdown_immediately(&self, vm: &VM) -> Result<()> {
         self.qmp_command(vm, |mut c| {
-            c.send_command::<serde_json::Value>("system_powerdown", None)?;
+            c.send_command::<GenericReturn>("system_powerdown", None)?;
             Ok(())
         })
     }
