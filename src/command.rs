@@ -10,7 +10,7 @@ pub struct Commands {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum CommandType {
-    /// Create vm with a sized image
+    /// Create vm with a sized image, or append storage to an existing VM
     Create {
         /// Append this VM image to an existing VM?
         #[arg(short, long, default_value = "false")]
@@ -133,14 +133,17 @@ pub enum CommandType {
         /// Name of VM
         name: String,
     },
+    /// Quickly save a snapshot of the named VM
     Save {
         /// Name of VM
         name: String,
     },
+    /// Load the quick save of the named VM
     Load {
         /// Name of VM
         name: String,
     },
+    /// Delete the quick save of the named VM
     ClearState {
         /// Name of VM
         name: String,
