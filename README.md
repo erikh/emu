@@ -2,6 +2,8 @@
 
 `emu-cli` installs the `emu` tool, which is a CLI program currently aimed at making x86 VM usage easier for Linux desktop users.
 
+See a video of it in action: [YouTube](https://youtu.be/snagHPxFIgw)
+
 It contains commands to:
 
 -   Manage VMs as a system-wide fleet
