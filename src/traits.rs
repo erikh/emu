@@ -37,6 +37,7 @@ pub trait SupervisorStorageHandler: Debug {
 }
 
 pub trait ConfigStorageHandler: Debug {
+    fn running_vms(&self) -> Result<Vec<VM>>;
     fn base_path(&self) -> PathBuf;
     fn config_path(&self, vm: &VM) -> PathBuf;
     fn vm_root(&self, vm: &VM) -> PathBuf;

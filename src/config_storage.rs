@@ -28,6 +28,18 @@ impl ConfigStorageHandler for XDGConfigStorage {
         self.base_path().join(vm.name())
     }
 
+    fn running_vms(&self) -> Result<Vec<VM>> {
+        let mut ret = Vec::new();
+
+        for vm in self.vm_list()? {
+            if vm.supervisor().is_active(&vm)? {
+                ret.push(vm);
+            }
+        }
+
+        Ok(ret)
+    }
+
     fn vm_list(&self) -> Result<Vec<VM>> {
         match std::fs::read_dir(self.base_path()) {
             Ok(rd) => {

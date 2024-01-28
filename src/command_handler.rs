@@ -330,6 +330,12 @@ impl CommandHandler {
     }
 
     pub fn run(&self, vm: &VM, detach: bool) -> Result<()> {
+        for running in self.config.running_vms()? {
+            if running.config().is_port_conflict(&vm.config()) {
+                return Err(anyhow!("{} will fail to launch because {} already occupies a network port it would use", vm, running));
+            }
+        }
+
         if detach {
             self.launcher.launch_detached(vm)
         } else {

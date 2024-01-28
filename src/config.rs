@@ -51,6 +51,18 @@ impl Default for Configuration {
 }
 
 impl Configuration {
+    pub fn is_port_conflict(&self, other: &Self) -> bool {
+        for key in self.ports.keys() {
+            for okey in other.ports.keys() {
+                if key == okey {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     pub fn from_file(filename: PathBuf) -> Self {
         std::fs::read_to_string(filename).map_or_else(
             |_| Self::default(),
