@@ -1,3 +1,5 @@
+-   latest:
+    -   Instead of letting qemu spit out a nasty error, we now detect port forwards already in use and block the run.
 -   0.4.1:
     -   Named snapshots are now under the `snapshot` sub-commmand structure and provide the following features for now:
         -   `emu snapshot save <vm> <name>` saves a new snapshot to the VM. The snapshot's name must not already be saved.
