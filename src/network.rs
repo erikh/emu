@@ -36,8 +36,7 @@ pub struct BridgeManager {}
 impl NetworkManager for BridgeManager {
     async fn create_network(&self, name: &str) -> Result<Network> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let bridge_name = NAME_PREFIX.to_string() + name;
@@ -81,8 +80,7 @@ impl NetworkManager for BridgeManager {
 
     async fn delete_network(&self, network: &Network) -> Result<()> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let resp = handle.link().del(network.index).execute().await;
@@ -98,8 +96,7 @@ impl NetworkManager for BridgeManager {
 
     async fn exists_network(&self, network: &Network) -> Result<bool> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let resp = handle
@@ -130,8 +127,7 @@ impl NetworkManager for BridgeManager {
 
     async fn create_interface(&self, network: &Network, id: u32) -> Result<Interface> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let if_name = network.name.clone() + &format!("-{}", id);
@@ -180,8 +176,7 @@ impl NetworkManager for BridgeManager {
 
     async fn delete_interface(&self, interface: &Interface) -> Result<()> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let resp = handle.link().del(interface.index).execute().await;
@@ -198,8 +193,7 @@ impl NetworkManager for BridgeManager {
 
     async fn exists_interface(&self, interface: &Interface) -> Result<bool> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let resp = handle
@@ -228,8 +222,7 @@ impl NetworkManager for BridgeManager {
 
     async fn bind(&self, network: &Network, interface: &Interface) -> Result<()> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let resp = handle
@@ -251,8 +244,7 @@ impl NetworkManager for BridgeManager {
 
     async fn unbind(&self, interface: &Interface) -> Result<()> {
         match rtnetlink::new_connection() {
-            Ok(connection) => {
-                let (c, handle, r) = connection;
+            Ok((c, handle, r)) => {
                 tokio::spawn(c);
 
                 let resp = handle
