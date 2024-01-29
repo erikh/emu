@@ -4,9 +4,10 @@ use super::{
     traits::{ConfigStorageHandler, SupervisorHandler, Supervisors},
 };
 use crate::config::Configuration;
+use serde::{de::Visitor, Deserialize, Serialize};
 use std::{fmt::Display, path::PathBuf, sync::Arc};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VM {
     name: String,
     cdrom: Option<PathBuf>,
@@ -14,6 +15,12 @@ pub struct VM {
     config: Configuration,
     headless: bool,
     supervisor: Supervisors,
+}
+
+impl std::hash::Hash for VM {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state)
+    }
 }
 
 impl Display for VM {
@@ -88,5 +95,37 @@ impl VM {
 
     pub fn set_config(&mut self, config: Configuration) {
         self.config = config;
+    }
+}
+
+impl Serialize for VM {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.name)
+    }
+}
+
+struct VMVisitor;
+
+impl Visitor<'_> for VMVisitor {
+    type Value = VM;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("expecting a vm name")
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
+        Ok(v.into())
+    }
+}
+
+impl<'de> Deserialize<'de> for VM {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(VMVisitor)
     }
 }

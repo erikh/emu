@@ -12,13 +12,13 @@ const DEFAULT_IMAGE_INTERFACE: &str = "virtio";
 
 pub type PortMap = HashMap<String, u16>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Configuration {
     pub machine: MachineConfiguration,
     pub ports: PortMap,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MachineConfiguration {
     pub ssh_port: u16,
     pub memory: u32, // megabytes

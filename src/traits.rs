@@ -4,7 +4,7 @@ use std::{fmt::Debug, path::PathBuf, process::ExitStatus, sync::Arc};
 
 const DEFAULT_SNAPSHOT_TAG: &str = "[EMU-Suspend]";
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Supervisors {
     Systemd,
     #[default]
