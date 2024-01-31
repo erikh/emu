@@ -134,6 +134,7 @@ mod tests {
 
         let image = QEmuImageHandler::default();
         image.remove(image.create(path.clone(), 2)?)?;
+        std::fs::remove_dir_all(path)?;
 
         Ok(())
     }

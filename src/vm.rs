@@ -164,7 +164,7 @@ mod tests {
         let dir = tempdir()?;
         let base_path = dir.into_path();
         let storage: Arc<Box<dyn ConfigStorageHandler>> =
-            Arc::new(Box::new(XDGConfigStorage::new(base_path)));
+            Arc::new(Box::new(XDGConfigStorage::new(base_path.clone())));
 
         let mut vm = VM::new("vm1".to_string(), storage.clone());
         storage.create(&vm)?;
@@ -185,6 +185,7 @@ mod tests {
         vm.set_headless(true);
         assert!(vm.headless());
 
+        std::fs::remove_dir_all(base_path)?;
         Ok(())
     }
 }

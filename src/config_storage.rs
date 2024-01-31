@@ -226,6 +226,7 @@ mod tests {
         storage.write_config(vm1.clone())?;
         assert!(storage.vm_path_exists(&vm1, "config"));
 
+        std::fs::remove_dir_all(base_path)?;
         Ok(())
     }
 }
