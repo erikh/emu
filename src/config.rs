@@ -89,10 +89,6 @@ impl Configuration {
         Ok(())
     }
 
-    pub fn check_ports(&self) -> Result<()> {
-        Ok(())
-    }
-
     pub fn map_port(&mut self, hostport: u16, guestport: u16) {
         self.ports.insert(hostport.to_string(), guestport);
     }
@@ -129,5 +125,85 @@ impl Configuration {
             }
             _ => Err(anyhow!("key does not exist")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use std::path::PathBuf;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn test_set_machine_value() -> Result<()> {
+        let mut config = Configuration::default();
+        config.set_machine_value("memory", "1024")?;
+        assert_eq!(config.machine.memory, 1024);
+        config.set_machine_value("cpus", "2")?;
+        assert_eq!(config.machine.cpus, 2);
+        config.set_machine_value("vga", "none")?;
+        assert_eq!(config.machine.vga, "none");
+        config.set_machine_value("image-interface", "virtio")?;
+        assert_eq!(config.machine.image_interface, "virtio");
+        config.set_machine_value("cpu-type", "host")?;
+        assert_eq!(config.machine.cpu_type, "host");
+        config.set_machine_value("ssh-port", "2222")?;
+        assert_eq!(config.machine.ssh_port, 2222);
+        Ok(())
+    }
+
+    #[test]
+    fn test_map_unmap_ports() -> Result<()> {
+        let mut config = Configuration::default();
+        config.map_port(2222, 22);
+        assert_eq!(config.ports.get("2222"), Some(22).as_ref());
+        config.unmap_port(2222);
+        assert_eq!(config.ports.get("2222"), None);
+
+        let mut conflict1 = Configuration::default();
+        let mut conflict2 = Configuration::default();
+
+        conflict1.map_port(2222, 22);
+        conflict2.map_port(2222, 22);
+
+        assert!(conflict1.is_port_conflict(&conflict2));
+
+        conflict2.unmap_port(2222);
+        assert!(!conflict1.is_port_conflict(&conflict2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_io() -> Result<()> {
+        let tmp = NamedTempFile::new()?;
+        let path = tmp.path().to_path_buf();
+        // failure to read results in a default configuration
+        let config = Configuration::from_file(PathBuf::from("/"));
+        assert_eq!(config, Configuration::default());
+
+        // i/o of default configuration
+        Configuration::default().to_file(path.clone())?;
+        let config = Configuration::from_file(path.clone());
+        assert_eq!(config, Configuration::default());
+
+        let orig = Configuration {
+            machine: MachineConfiguration {
+                ssh_port: 2000,
+                cpu_type: Default::default(),
+                cpus: 4,
+                image_interface: Default::default(),
+                memory: 2048,
+                vga: Default::default(),
+            },
+            ports: Default::default(),
+        };
+
+        orig.to_file(path.clone())?;
+        let new = Configuration::from_file(path);
+        assert_eq!(orig, new);
+
+        Ok(())
     }
 }

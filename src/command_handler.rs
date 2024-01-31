@@ -243,10 +243,11 @@ impl CommandHandler {
                 return Err(anyhow!("filename contains invalid characters"));
             }
 
-            std::fs::create_dir_all(self.config.vm_root(vm))?;
+            self.config.create(vm)?;
         }
 
-        self.image.create(self.config.vm_root(vm), size)
+        self.image.create(self.config.vm_root(vm), size)?;
+        Ok(())
     }
 
     pub fn list_disks(&self, vm: &VM) -> Result<()> {
@@ -270,17 +271,11 @@ impl CommandHandler {
     }
 
     pub fn delete(&self, vm: &VM, disk: Option<String>) -> Result<()> {
-        if !self.config.vm_exists(vm) {
-            return Err(anyhow!("vm doesn't exist"));
-        }
+        self.config.delete(vm, disk)?;
 
-        let root = self.config.vm_root(vm);
-        if let Some(disk) = disk {
-            std::fs::remove_file(root.join(format!("qemu-{}.{}", disk, QEMU_IMG_DEFAULT_FORMAT)))?;
-        } else {
-            std::fs::remove_dir_all(root)?;
+        if vm.supervisor().supervised() {
             if let Err(_) = self.unsupervise(vm) {
-                println!("Could not remove systemd unit; assuming it was never installed")
+                println!("Could not remove systemd unit")
             }
         }
 
@@ -354,7 +349,7 @@ impl CommandHandler {
 
     pub fn import(&self, vm: &VM, from_file: PathBuf, format: String) -> Result<()> {
         if !self.config.vm_exists(vm) {
-            std::fs::create_dir_all(self.config.vm_root(vm))?;
+            self.config.create(vm)?;
         }
 
         self.image.import(
@@ -393,7 +388,7 @@ impl CommandHandler {
             descriptions.push(s.to_string())
         }
 
-        std::fs::create_dir_all(self.config.vm_root(to))?;
+        self.config.create(to)?;
         for (x, img) in images.iter().enumerate() {
             self.image.clone_image(
                 descriptions[x].to_string(),

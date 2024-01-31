@@ -4,6 +4,7 @@ use super::{
     traits::{ConfigStorageHandler, SupervisorHandler, Supervisors},
 };
 use crate::config::Configuration;
+use anyhow::Result;
 use serde::{de::Visitor, Deserialize, Serialize};
 use std::{fmt::Display, path::PathBuf, sync::Arc};
 
@@ -93,6 +94,10 @@ impl VM {
         self.config = Configuration::from_file(storage.config_path(self));
     }
 
+    pub fn save_config(&mut self, storage: Arc<Box<dyn ConfigStorageHandler>>) -> Result<()> {
+        self.config.to_file(storage.config_path(self))
+    }
+
     pub fn set_config(&mut self, config: Configuration) {
         self.config = config;
     }
@@ -116,8 +121,8 @@ impl Visitor<'_> for VMVisitor {
         formatter.write_str("expecting a vm name")
     }
 
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E> {
-        Ok(v.into())
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E> {
+        Ok(v.to_string().into())
     }
 }
 
@@ -127,5 +132,59 @@ impl<'de> Deserialize<'de> for VM {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_str(VMVisitor)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config_storage::XDGConfigStorage;
+    use anyhow::Result;
+    use std::sync::Arc;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_into() -> Result<()> {
+        let vm1: VM = "vm1".to_string().into();
+        assert_eq!(vm1.name(), "vm1".to_string());
+        Ok(())
+    }
+
+    #[test]
+    fn test_serde() -> Result<()> {
+        let vm1: VM = "vm1".to_string().into();
+        assert_eq!(serde_json::to_string(&vm1)?, "\"vm1\"");
+        let vm1: VM = serde_json::from_str("\"vm1\"")?;
+        assert_eq!(vm1.name(), "vm1".to_string());
+        Ok(())
+    }
+
+    #[test]
+    fn test_vm_operations() -> Result<()> {
+        let dir = tempdir()?;
+        let base_path = dir.into_path();
+        let storage: Arc<Box<dyn ConfigStorageHandler>> =
+            Arc::new(Box::new(XDGConfigStorage::new(base_path)));
+
+        let mut vm = VM::new("vm1".to_string(), storage.clone());
+        storage.create(&vm)?;
+
+        assert!(!vm.supervisor().supervised());
+        assert!(!vm.supervisor().is_active(&vm)?);
+        let mut config = vm.config();
+        config.machine.ssh_port = 2000;
+        vm.set_config(config.clone());
+        vm.save_config(storage.clone())?;
+        vm.load_config(storage.clone());
+        assert_eq!(vm.config(), config);
+
+        vm.set_cdrom(PathBuf::from("/cdrom"));
+        assert_eq!(vm.cdrom(), Some(PathBuf::from("/cdrom")));
+        vm.set_extra_disk(PathBuf::from("/cdrom"));
+        assert_eq!(vm.extra_disk(), Some(PathBuf::from("/cdrom")));
+        vm.set_headless(true);
+        assert!(vm.headless());
+
+        Ok(())
     }
 }
