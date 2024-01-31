@@ -53,3 +53,17 @@ impl Systemd {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[test]
+    fn test_template() -> Result<()> {
+        let out = Systemd::template(&Systemd, &"vm1".to_string().into())?;
+        assert!(out.contains("vm1"));
+
+        Ok(())
+    }
+}

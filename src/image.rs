@@ -52,7 +52,7 @@ impl ImageHandler for QEmuImageHandler {
         Ok(())
     }
 
-    fn create(&self, target: PathBuf, gbs: usize) -> Result<()> {
+    fn create(&self, target: PathBuf, gbs: usize) -> Result<PathBuf> {
         let filename = target.join(qemu_img_name());
 
         if path_exists(filename.clone()) {
@@ -76,7 +76,7 @@ impl ImageHandler for QEmuImageHandler {
         match status {
             Ok(st) => {
                 if st.success() {
-                    Ok(())
+                    Ok(filename)
                 } else {
                     Err(anyhow!(
                         "process exited with code: {}",
@@ -117,6 +117,24 @@ impl ImageHandler for QEmuImageHandler {
         }
 
         newf.flush()?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_image() -> Result<()> {
+        let dir = tempdir()?;
+        let path = dir.into_path();
+
+        let image = QEmuImageHandler::default();
+        image.remove(image.create(path.clone(), 2)?)?;
+
         Ok(())
     }
 }

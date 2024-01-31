@@ -13,7 +13,7 @@ pub enum Supervisors {
 
 pub trait ImageHandler: Debug {
     fn import(&self, new_file: PathBuf, orig_file: PathBuf, format: String) -> Result<()>;
-    fn create(&self, target: PathBuf, gbs: usize) -> Result<()>;
+    fn create(&self, target: PathBuf, gbs: usize) -> Result<PathBuf>;
     fn remove(&self, disk: PathBuf) -> Result<()>;
     fn clone_image(&self, description: String, old: PathBuf, new: PathBuf) -> Result<()>;
 }
@@ -37,6 +37,8 @@ pub trait SupervisorStorageHandler: Debug {
 }
 
 pub trait ConfigStorageHandler: Debug {
+    fn create(&self, vm: &VM) -> Result<()>;
+    fn delete(&self, vm: &VM, disk: Option<String>) -> Result<()>;
     fn running_vms(&self) -> Result<Vec<VM>>;
     fn base_path(&self) -> PathBuf;
     fn config_path(&self, vm: &VM) -> PathBuf;

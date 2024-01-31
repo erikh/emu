@@ -60,7 +60,6 @@ impl Default for QEmuLauncher {
 impl QEmuLauncher {
     fn hostfwd_rules(&self, vm: &VM) -> Result<String> {
         let config = vm.config();
-        config.check_ports()?;
         let mut res = String::new();
         for (host, guest) in config.ports {
             res += &format!(",hostfwd=tcp:127.0.0.1:{}-:{}", host, guest);
