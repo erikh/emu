@@ -130,12 +130,12 @@ mod tests {
     #[test]
     fn test_image() -> Result<()> {
         let dir = tempdir()?;
-        let path = dir.into_path();
+        let path = dir.path().to_path_buf();
 
         let image = QEmuImageHandler::default();
         image.remove(image.create(path.clone(), 2)?)?;
-        std::fs::remove_dir_all(path)?;
 
+        dir.close()?;
         Ok(())
     }
 }

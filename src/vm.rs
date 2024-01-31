@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_vm_operations() -> Result<()> {
         let dir = tempdir()?;
-        let base_path = dir.into_path();
+        let base_path = dir.path().to_path_buf();
         let storage: Arc<Box<dyn ConfigStorageHandler>> =
             Arc::new(Box::new(XDGConfigStorage::new(base_path.clone())));
 
@@ -185,7 +185,7 @@ mod tests {
         vm.set_headless(true);
         assert!(vm.headless());
 
-        std::fs::remove_dir_all(base_path)?;
+        dir.close()?;
         Ok(())
     }
 }

@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn test_xdg_storage() -> Result<()> {
         let base = tempdir()?;
-        let base_path = base.into_path();
+        let base_path = base.path().to_path_buf();
         let storage = XDGConfigStorage::new(base_path.clone());
 
         let vm1: VM = "vm1".to_string().into();
@@ -226,7 +226,7 @@ mod tests {
         storage.write_config(vm1.clone())?;
         assert!(storage.vm_path_exists(&vm1, "config"));
 
-        std::fs::remove_dir_all(base_path)?;
+        base.close()?;
         Ok(())
     }
 }
