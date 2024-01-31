@@ -15,7 +15,7 @@ use std::{
 
 const SYSTEMD_USER_DIR: &str = "systemd/user";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SystemdSupervisorStorage {
     basedir: PathBuf,
 }
@@ -75,7 +75,7 @@ impl SupervisorStorageHandler for SystemdSupervisorStorage {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct NullSupervisorStorage;
 
 impl SupervisorStorageHandler for NullSupervisorStorage {
