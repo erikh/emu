@@ -39,7 +39,7 @@ pub struct Drive {
 #[serde(rename_all = "kebab-case")]
 pub struct Image {
     pub actual_size: Option<usize>,
-    pub backing_image: BackingImage,
+    pub backing_image: Option<BackingImage>,
     pub cluster_size: Option<usize>,
     pub dirty_flag: Option<bool>,
     pub filename: Option<String>,

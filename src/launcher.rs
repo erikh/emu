@@ -100,7 +100,7 @@ impl QEmuLauncher {
         for (x, disk) in disk_list.iter().enumerate() {
             disks.push("-drive".to_string());
             disks.push(format!(
-                "driver={},if={},file={},cache=none,media=disk,index={},snapshot=on",
+                "driver={},if={},file={},cache=none,media=disk,index={}",
                 QEMU_IMG_DEFAULT_FORMAT,
                 config.machine.image_interface,
                 disk.display(),
@@ -114,7 +114,6 @@ impl QEmuLauncher {
             "-nodefaults",
             "-chardev",
             format!("socket,server=on,wait=off,id=char0,path={}", mon.display()),
-            "-snapshot",
             "-mon",
             "chardev=char0,mode=control,pretty=on",
             "-machine",
