@@ -1,4 +1,5 @@
--   latest:
+-   0.4.2:
+    -   Fix a large bug with qemu launches; I had misunderstood what `-snapshot` was for, VMs launched with this flag will not retain their state.
     -   Instead of letting qemu spit out a nasty error, we now detect port forwards already in use and block the run.
 -   0.4.1:
     -   Named snapshots are now under the `snapshot` sub-commmand structure and provide the following features for now:
