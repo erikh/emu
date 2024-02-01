@@ -12,16 +12,16 @@ pub struct GenericReturn {
     pub error: Option<ErrorDetail>,
 }
 
-impl<T> Into<Result<T>> for GenericReturn
+impl<T> From<GenericReturn> for Result<T>
 where
     T: for<'de> serde::Deserialize<'de> + Default + std::fmt::Debug,
 {
-    fn into(self) -> Result<T> {
-        if let Some(error) = self.error {
+    fn from(value: GenericReturn) -> Self {
+        if let Some(error) = value.error {
             return Err(anyhow!("{}", error));
         }
 
-        return Ok(T::default());
+        Ok(T::default())
     }
 }
 
@@ -79,9 +79,9 @@ pub struct ErrorReturn {
     pub error: ErrorDetail,
 }
 
-impl Into<anyhow::Error> for ErrorReturn {
-    fn into(self) -> anyhow::Error {
-        anyhow!("{}", self.error)
+impl From<ErrorReturn> for anyhow::Error {
+    fn from(value: ErrorReturn) -> Self {
+        anyhow!("{}", value.error)
     }
 }
 

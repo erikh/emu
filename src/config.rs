@@ -30,7 +30,7 @@ pub struct MachineConfiguration {
 
 impl std::fmt::Display for Configuration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&toml::to_string_pretty(self).map_err(|_| std::fmt::Error::default())?)
+        f.write_str(&toml::to_string_pretty(self).map_err(|_| std::fmt::Error)?)
     }
 }
 
@@ -60,7 +60,7 @@ impl Configuration {
             }
         }
 
-        return false;
+        false
     }
 
     pub fn from_file(filename: PathBuf) -> Self {

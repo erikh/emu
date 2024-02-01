@@ -15,10 +15,10 @@ pub struct Client {
 impl Client {
     pub fn new(us: PathBuf) -> std::io::Result<Self> {
         let stream = UnixStream::connect(us)?;
-        return Ok(Self {
+        Ok(Self {
             output: stream.try_clone()?,
             input: BufReader::new(stream),
-        });
+        })
     }
 
     fn read_input<T>(&mut self) -> Result<T>
@@ -26,7 +26,7 @@ impl Client {
         T: for<'de> serde::Deserialize<'de> + Default + std::fmt::Debug,
     {
         let mut buf = String::new();
-        while let Ok(_) = self.input.read_line(&mut buf) {
+        while self.input.read_line(&mut buf).is_ok() {
             if buf.ends_with("\r\n}\r\n") {
                 match serde_json::from_str::<T>(&buf) {
                     Ok(obj) => {
@@ -34,7 +34,7 @@ impl Client {
                     }
                     Err(e) => {
                         // incoming event, ignore it and retry
-                        if let Ok(_) = serde_json::from_str::<Event>(&buf) {
+                        if serde_json::from_str::<Event>(&buf).is_ok() {
                             buf = String::new();
                         } else if let Ok(e) = serde_json::from_str::<ErrorReturn>(&buf) {
                             // got an error, return it
@@ -50,11 +50,11 @@ impl Client {
             }
         }
 
-        return Err(anyhow!("Read past end of input"));
+        Err(anyhow!("Read past end of input"))
     }
 
     fn send_output(&mut self, val: Value) -> Result<()> {
-        match self.output.write_all(&val.to_string().as_bytes()) {
+        match self.output.write_all(val.to_string().as_bytes()) {
             Ok(_) => Ok(()),
             Err(e) => Err(anyhow!(e)),
         }
@@ -171,9 +171,7 @@ impl Client {
             return Err(e);
         }
 
-        if let Err(e) = res {
-            return Err(e);
-        }
+        res?;
 
         Ok(())
     }

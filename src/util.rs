@@ -9,7 +9,7 @@ pub fn path_exists(path: PathBuf) -> bool {
 }
 
 pub fn valid_filename(name: &str) -> bool {
-    !(name.contains("..") || name.contains(std::path::MAIN_SEPARATOR) || name.contains("\x00"))
+    !(name.contains("..") || name.contains(std::path::MAIN_SEPARATOR) || name.contains('\x00'))
 }
 
 #[cfg(test)]

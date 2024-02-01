@@ -52,7 +52,7 @@ pub struct QEmuLauncher {
 impl Default for QEmuLauncher {
     fn default() -> Self {
         Self {
-            config: Arc::new(Box::new(XDGConfigStorage::default())),
+            config: Arc::new(Box::<XDGConfigStorage>::default()),
         }
     }
 }
@@ -222,7 +222,7 @@ impl Launcher for QEmuLauncher {
             match cmd.args(args).spawn() {
                 Ok(mut child) => {
                     std::fs::write(
-                        &self.config.pidfile(vm),
+                        self.config.pidfile(vm),
                         format!("{}", child.id()).as_bytes(),
                     )?;
                     child.wait()?;
@@ -231,7 +231,7 @@ impl Launcher for QEmuLauncher {
                 Err(e) => Err(anyhow!(e)),
             }
         } else {
-            return Err(anyhow!("could not fork"));
+            Err(anyhow!("could not fork"))
         }
     }
 }

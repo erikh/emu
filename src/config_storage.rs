@@ -1,7 +1,7 @@
 use super::{image::QEMU_IMG_DEFAULT_FORMAT, traits::ConfigStorageHandler, vm::VM};
 use crate::util::path_exists;
 use anyhow::{anyhow, Result};
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub struct XDGConfigStorage {
@@ -27,7 +27,7 @@ impl Default for XDGConfigStorage {
 
 impl ConfigStorageHandler for XDGConfigStorage {
     fn create(&self, vm: &VM) -> Result<()> {
-        Ok(std::fs::create_dir_all(self.vm_root(&vm))?)
+        Ok(std::fs::create_dir_all(self.vm_root(vm))?)
     }
 
     fn rename(&self, old: &VM, new: &VM) -> Result<()> {
@@ -57,7 +57,7 @@ impl ConfigStorageHandler for XDGConfigStorage {
                 for dir in rd {
                     match dir {
                         Ok(dir) => match dir.file_name().into_string() {
-                            Ok(s) => ret.push(VM::new(s, Arc::new(Box::new(self.clone())))),
+                            Ok(s) => ret.push(VM::new(s, Rc::new(Box::new(self.clone())))),
                             Err(_) => {
                                 return Err(anyhow!(
                                 "could not iterate base directory; some vm filenames are invalid"
@@ -83,7 +83,7 @@ impl ConfigStorageHandler for XDGConfigStorage {
     }
 
     fn pidfile(&self, vm: &VM) -> PathBuf {
-        self.vm_path(&vm, "pid")
+        self.vm_path(vm, "pid")
     }
 
     fn base_path(&self) -> PathBuf {
@@ -117,16 +117,14 @@ impl ConfigStorageHandler for XDGConfigStorage {
         let mut v = Vec::new();
 
         let dir = std::fs::read_dir(self.vm_root(vm))?;
-        for item in dir {
-            if let Ok(item) = item {
-                if item
-                    .path()
-                    .to_str()
-                    .unwrap()
-                    .ends_with(&format!(".{}", QEMU_IMG_DEFAULT_FORMAT))
-                {
-                    v.push(item.path());
-                }
+        for item in dir.flatten() {
+            if item
+                .path()
+                .to_str()
+                .unwrap()
+                .ends_with(&format!(".{}", QEMU_IMG_DEFAULT_FORMAT))
+            {
+                v.push(item.path());
             }
         }
 
@@ -153,15 +151,10 @@ impl ConfigStorageHandler for XDGConfigStorage {
         let mut items = Vec::new();
         let mut dirs = vec![dir];
         while let Some(dir) = dirs.pop() {
-            for item in dir {
-                match item {
-                    Ok(item) => {
-                        let meta = item.metadata()?;
-                        if meta.is_file() {
-                            items.push(item);
-                        }
-                    }
-                    _ => {}
+            for item in dir.flatten() {
+                let meta = item.metadata()?;
+                if meta.is_file() {
+                    items.push(item);
                 }
             }
         }

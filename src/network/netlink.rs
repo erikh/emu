@@ -52,12 +52,12 @@ impl Visitor<'_> for NetlinkNetworkVisitor {
         formatter.write_str("expecting a network name")
     }
 
-    fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
         Ok(NetlinkNetwork {
-            name: v,
+            name: v.to_string(),
             index: None,
         })
     }
@@ -68,7 +68,7 @@ impl<'de> Deserialize<'de> for NetlinkNetwork {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_string(NetlinkNetworkVisitor)
+        deserializer.deserialize_str(NetlinkNetworkVisitor)
     }
 }
 

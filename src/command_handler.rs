@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{qmp::client::Client, util::valid_filename};
 use anyhow::{anyhow, Result};
-use std::{path::PathBuf, process::Command, sync::Arc};
+use std::{path::PathBuf, process::Command, rc::Rc, sync::Arc};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, Interest},
     sync::Mutex,
@@ -16,7 +16,7 @@ use tokio::{
 
 #[derive(Debug, Clone)]
 pub struct CommandHandler {
-    launcher: Arc<Box<dyn Launcher>>,
+    launcher: Rc<Box<dyn Launcher>>,
     config: Arc<Box<dyn ConfigStorageHandler>>,
     image: Arc<Box<dyn ImageHandler>>,
 }
@@ -24,9 +24,9 @@ pub struct CommandHandler {
 impl Default for CommandHandler {
     fn default() -> Self {
         Self {
-            launcher: Arc::new(Box::new(QEmuLauncher::default())),
-            config: Arc::new(Box::new(XDGConfigStorage::default())),
-            image: Arc::new(Box::new(QEmuImageHandler::default())),
+            launcher: Rc::new(Box::<QEmuLauncher>::default()),
+            config: Arc::new(Box::<XDGConfigStorage>::default()),
+            image: Arc::new(Box::<QEmuImageHandler>::default()),
         }
     }
 }
@@ -92,7 +92,7 @@ impl CommandHandler {
                         }
                     }
                     Err(e) => (
-                        format!("supervised: could not determine status: {}", e.to_string()),
+                        format!("supervised: could not determine status: {}", e),
                         false,
                     ),
                 }
@@ -102,7 +102,7 @@ impl CommandHandler {
                 ("stopped".to_string(), false)
             };
 
-            if running && is_running || !running {
+            if !running || is_running {
                 println!(
                     "{} ({}) (size: {:.2})",
                     vm.name(),
@@ -181,7 +181,7 @@ impl CommandHandler {
             .await?;
 
             let mut buf = [0_u8; 4096];
-            let interest = Interest::WRITABLE.clone();
+            let interest = Interest::WRITABLE;
             let interest = interest.add(Interest::READABLE);
             let interest = interest.add(Interest::ERROR);
 
@@ -196,7 +196,7 @@ impl CommandHandler {
                 if state.is_readable() {
                     while let Ok(size) = stream.try_read(&mut buf) {
                         if size > 0 {
-                            tokio::io::stdout().write(&buf[..size]).await?;
+                            tokio::io::stdout().write_all(&buf[..size]).await?;
                         } else {
                             break;
                         }
@@ -205,7 +205,7 @@ impl CommandHandler {
 
                 if state.is_writable() {
                     while let Ok(buf) = r.try_recv() {
-                        stream.write(&buf).await?;
+                        stream.write_all(&buf).await?;
                     }
                 }
 
@@ -263,7 +263,7 @@ impl CommandHandler {
                 .unwrap()
                 .trim_start_matches("qemu-")
                 .trim_end_matches(QEMU_IMG_DEFAULT_FORMAT)
-                .trim_end_matches(".");
+                .trim_end_matches('.');
             println!("{}", disk);
         }
 
@@ -273,10 +273,8 @@ impl CommandHandler {
     pub fn delete(&self, vm: &VM, disk: Option<String>) -> Result<()> {
         self.config.delete(vm, disk)?;
 
-        if vm.supervisor().supervised() {
-            if let Err(_) = self.unsupervise(vm) {
-                println!("Could not remove systemd unit")
-            }
+        if vm.supervisor().supervised() && self.unsupervise(vm).is_err() {
+            println!("Could not remove systemd unit")
         }
 
         Ok(())
@@ -300,7 +298,7 @@ impl CommandHandler {
     }
 
     pub fn is_active(&self, vm: &VM) -> Result<()> {
-        if vm.supervisor().is_active(&vm).unwrap_or_default() {
+        if vm.supervisor().is_active(vm).unwrap_or_default() {
             println!("{} is active", vm);
         } else {
             println!("{} is not active", vm);
@@ -426,7 +424,7 @@ impl CommandHandler {
             println!("VM {} does not exist", vm);
             return Ok(());
         }
-        println!("{}", vm.config().to_string());
+        println!("{}", vm.config());
         Ok(())
     }
 

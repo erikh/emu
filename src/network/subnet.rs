@@ -41,9 +41,9 @@ impl Subnet {
 
     pub fn launch(&self, launcher: impl crate::traits::Launcher) -> Result<()> {
         // TODO: configure network
-        for (vm, _) in &self.names {
-            if vm.supervisor().is_active(&vm)? {
-                launcher.launch_detached(&vm)?;
+        for vm in self.names.keys() {
+            if vm.supervisor().is_active(vm)? {
+                launcher.launch_detached(vm)?;
             }
         }
 
@@ -51,8 +51,8 @@ impl Subnet {
     }
 
     pub fn shutdown(&self, launcher: impl crate::traits::Launcher) -> Result<()> {
-        for (vm, _) in &self.names {
-            if vm.supervisor().is_active(&vm)? {
+        for vm in self.names.keys() {
+            if vm.supervisor().is_active(vm)? {
                 launcher.shutdown_immediately(vm)?;
             }
         }

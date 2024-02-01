@@ -42,11 +42,11 @@ impl Visitor<'_> for AddressVisitor {
         formatter.write_str("expecting a CIDR-formatted address")
     }
 
-    fn visit_string<E>(self, v: String) -> std::result::Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
-        let parts = v.split("/").collect::<Vec<&str>>();
+        let parts = v.split('/').collect::<Vec<&str>>();
         if parts.len() != 2 {
             return Err(E::custom("invalid CIDR"));
         }
@@ -62,6 +62,6 @@ impl<'de> Deserialize<'de> for Address {
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_string(AddressVisitor)
+        deserializer.deserialize_str(AddressVisitor)
     }
 }

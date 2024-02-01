@@ -6,7 +6,7 @@ use super::{
 use crate::config::Configuration;
 use anyhow::Result;
 use serde::{de::Visitor, Deserialize, Serialize};
-use std::{fmt::Display, path::PathBuf, sync::Arc};
+use std::{fmt::Display, path::PathBuf, rc::Rc};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VM {
@@ -32,12 +32,12 @@ impl Display for VM {
 
 impl From<String> for VM {
     fn from(value: String) -> Self {
-        Self::new(value, Arc::new(Box::new(XDGConfigStorage::default())))
+        Self::new(value, Rc::new(Box::<XDGConfigStorage>::default()))
     }
 }
 
 impl VM {
-    pub fn new(name: String, storage: Arc<Box<dyn ConfigStorageHandler>>) -> Self {
+    pub fn new(name: String, storage: Rc<Box<dyn ConfigStorageHandler>>) -> Self {
         let mut obj = Self {
             name,
             ..Default::default()
@@ -83,18 +83,18 @@ impl VM {
         self.config.clone()
     }
 
-    pub fn supervisor(&self) -> Arc<Box<dyn SupervisorHandler>> {
+    pub fn supervisor(&self) -> Rc<Box<dyn SupervisorHandler>> {
         match self.supervisor {
-            Supervisors::Systemd => Arc::new(Box::new(SystemdSupervisor::default())),
-            _ => Arc::new(Box::new(PidSupervisor::default())),
+            Supervisors::Systemd => Rc::new(Box::<SystemdSupervisor>::default()),
+            _ => Rc::new(Box::<PidSupervisor>::default()),
         }
     }
 
-    pub fn load_config(&mut self, storage: Arc<Box<dyn ConfigStorageHandler>>) {
+    pub fn load_config(&mut self, storage: Rc<Box<dyn ConfigStorageHandler>>) {
         self.config = Configuration::from_file(storage.config_path(self));
     }
 
-    pub fn save_config(&mut self, storage: Arc<Box<dyn ConfigStorageHandler>>) -> Result<()> {
+    pub fn save_config(&mut self, storage: Rc<Box<dyn ConfigStorageHandler>>) -> Result<()> {
         self.config.to_file(storage.config_path(self))
     }
 
@@ -140,7 +140,7 @@ mod tests {
     use super::*;
     use crate::config_storage::XDGConfigStorage;
     use anyhow::Result;
-    use std::sync::Arc;
+    use std::rc::Rc;
     use tempfile::tempdir;
 
     #[test]
@@ -163,8 +163,8 @@ mod tests {
     fn test_vm_operations() -> Result<()> {
         let dir = tempdir()?;
         let base_path = dir.path().to_path_buf();
-        let storage: Arc<Box<dyn ConfigStorageHandler>> =
-            Arc::new(Box::new(XDGConfigStorage::new(base_path.clone())));
+        let storage: Rc<Box<dyn ConfigStorageHandler>> =
+            Rc::new(Box::new(XDGConfigStorage::new(base_path.clone())));
 
         let mut vm = VM::new("vm1".to_string(), storage.clone());
         storage.create(&vm)?;

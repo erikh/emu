@@ -48,30 +48,22 @@ impl SupervisorStorageHandler for SystemdSupervisorStorage {
 
     fn list(&self) -> Result<Vec<String>> {
         let mut v: Vec<String> = Vec::new();
-        for item in std::fs::read_dir(&self.basedir)? {
-            match item {
-                Ok(item) => {
-                    let filename = item.file_name().to_str().unwrap().to_string();
-                    if filename.starts_with("emu.") && filename.ends_with(".service") {
-                        v.push(
-                            filename
-                                .trim_start_matches("emu.")
-                                .trim_end_matches(".service")
-                                .to_string(),
-                        )
-                    }
-                }
-                Err(_) => {}
+        for item in std::fs::read_dir(&self.basedir)?.flatten() {
+            let filename = item.file_name().to_str().unwrap().to_string();
+            if filename.starts_with("emu.") && filename.ends_with(".service") {
+                v.push(
+                    filename
+                        .trim_start_matches("emu.")
+                        .trim_end_matches(".service")
+                        .to_string(),
+                )
             }
         }
         Ok(v)
     }
 
     fn create(&self, vm: &VM) -> Result<()> {
-        Ok(write(
-            self.service_filename(vm),
-            Systemd::default().template(vm)?,
-        )?)
+        Ok(write(self.service_filename(vm), Systemd.template(vm)?)?)
     }
 }
 
@@ -131,14 +123,14 @@ pub struct SystemdSupervisor {
 impl Default for SystemdSupervisor {
     fn default() -> Self {
         Self {
-            config: Arc::new(Box::new(XDGConfigStorage::default())),
+            config: Arc::new(Box::<XDGConfigStorage>::default()),
         }
     }
 }
 
 impl SupervisorHandler for SystemdSupervisor {
     fn storage(&self) -> Arc<Box<dyn SupervisorStorageHandler>> {
-        Arc::new(Box::new(SystemdSupervisorStorage::default()))
+        Arc::new(Box::<SystemdSupervisorStorage>::default())
     }
 
     fn supervised(&self) -> bool {
@@ -170,14 +162,14 @@ pub struct PidSupervisor {
 impl Default for PidSupervisor {
     fn default() -> Self {
         Self {
-            config: Arc::new(Box::new(XDGConfigStorage::default())),
+            config: Arc::new(Box::<XDGConfigStorage>::default()),
         }
     }
 }
 
 impl SupervisorHandler for PidSupervisor {
     fn storage(&self) -> Arc<Box<dyn SupervisorStorageHandler>> {
-        Arc::new(Box::new(NullSupervisorStorage::default()))
+        Arc::new(Box::<NullSupervisorStorage>::default())
     }
 
     fn supervised(&self) -> bool {
@@ -189,7 +181,7 @@ impl SupervisorHandler for PidSupervisor {
     }
 
     fn is_active(&self, vm: &VM) -> Result<bool> {
-        let f = match std::fs::read_to_string(self.config.pidfile(&vm)) {
+        let f = match std::fs::read_to_string(self.config.pidfile(vm)) {
             Ok(f) => f,
             Err(_) => return Ok(false),
         };
