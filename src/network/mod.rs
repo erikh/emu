@@ -9,11 +9,10 @@ use self::address::Address;
 use crate::vm::VM;
 
 use anyhow::Result;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
-pub trait Network<'a>: Send + Clone + Default + Serialize + Deserialize<'a> {
+pub trait Network: Send + Clone + Default + Serialize + Deserialize<'static> {
     fn name(&self) -> String;
     fn set_name(&self, name: String) -> Self;
 
@@ -32,28 +31,26 @@ pub trait NetworkInterface: Send + Default {
     fn id(&self) -> Option<u32>;
 }
 
-#[async_trait]
-pub trait NetworkManager<'a, I, N>
+pub trait NetworkManager<I, N>: Clone
 where
-    Self: Clone,
     I: NetworkInterface,
-    N: Network<'a>,
+    N: Network,
 {
-    async fn create_network(&self, name: &str) -> Result<N>;
-    async fn delete_network(&self, network: N) -> Result<()>;
-    async fn exists_network(&self, network: N) -> Result<bool>;
-    async fn create_interface(&self, network: N, id: u32) -> Result<I>;
-    async fn delete_interface(&self, interface: I) -> Result<()>;
-    async fn exists_interface(&self, interface: I) -> Result<bool>;
-    async fn bind(&self, network: N, interface: I) -> Result<()>;
-    async fn unbind(&self, interface: I) -> Result<()>;
-    async fn add_address(&self, interface: I, address: &Address) -> Result<()>;
+    fn create_network(&mut self, name: String) -> Result<N>;
+    fn delete_network(&mut self, network: N) -> Result<()>;
+    fn exists_network(&mut self, network: N) -> Result<bool>;
+    fn create_interface(&mut self, network: N, id: u32) -> Result<I>;
+    fn delete_interface(&mut self, interface: I) -> Result<()>;
+    fn exists_interface(&mut self, interface: I) -> Result<bool>;
+    fn bind(&mut self, network: N, interface: I) -> Result<()>;
+    fn unbind(&mut self, interface: I) -> Result<()>;
+    fn add_address(&mut self, interface: I, address: Address) -> Result<()>;
 }
 
 pub trait VMInterface<N>
 where
     Self: Default,
-    N: Network<'static>,
+    N: Network,
 {
     fn add_to_network(&self, network: N) -> Result<()>;
     fn remove_from_network(&self, network: N) -> Result<()>;
@@ -63,7 +60,7 @@ where
 #[derive(Debug, Clone, Default)]
 pub struct VMNetwork<V, I, N>
 where
-    N: Network<'static>,
+    N: Network,
     V: VMInterface<N>,
     I: NetworkInterface,
 {
@@ -75,7 +72,7 @@ where
 
 impl<V, T, N> VMNetwork<V, T, N>
 where
-    N: Network<'static>,
+    N: Network,
     V: VMInterface<N>,
     T: NetworkInterface,
 {
@@ -111,9 +108,9 @@ pub type VMNetworkMap<V, T, N> = HashMap<String, VMNetwork<V, T, N>>;
 
 pub struct NetworkList<V, M, T, N>
 where
-    N: Network<'static>,
+    N: Network,
     V: VMInterface<N>,
-    M: NetworkManager<'static, T, N>,
+    M: NetworkManager<T, N>,
     T: NetworkInterface,
 {
     networks: VMNetworkMap<V, T, N>,
@@ -122,9 +119,9 @@ where
 
 impl<V, M, T, N> NetworkList<V, M, T, N>
 where
-    N: Network<'static>,
+    N: Network,
     V: VMInterface<N>,
-    M: NetworkManager<'static, T, N>,
+    M: NetworkManager<T, N>,
     T: NetworkInterface,
 {
     pub fn create(&self, _: String) -> Result<()> {
@@ -189,9 +186,9 @@ where
 
 impl<V, M, T, N> std::ops::Deref for NetworkList<V, M, T, N>
 where
-    N: Network<'static>,
+    N: Network,
     V: VMInterface<N>,
-    M: NetworkManager<'static, T, N>,
+    M: NetworkManager<T, N>,
     T: NetworkInterface,
 {
     type Target = HashMap<String, VMNetwork<V, T, N>>;
@@ -203,9 +200,9 @@ where
 
 impl<V, M, T, N> std::ops::DerefMut for NetworkList<V, M, T, N>
 where
-    N: Network<'static>,
+    N: Network,
     V: VMInterface<N>,
-    M: NetworkManager<'static, T, N>,
+    M: NetworkManager<T, N>,
     T: NetworkInterface,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
