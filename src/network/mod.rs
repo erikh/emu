@@ -31,7 +31,7 @@ pub trait NetworkInterface: Send + Default {
     fn id(&self) -> Option<u32>;
 }
 
-pub trait NetworkManager<I, N>: Clone
+pub trait NetworkManager<I, N>: Clone + Default
 where
     I: NetworkInterface,
     N: Network,
@@ -47,9 +47,8 @@ where
     fn add_address(&mut self, interface: I, address: Address) -> Result<()>;
 }
 
-pub trait VMInterface<N>
+pub trait VMInterface<N>: Default + Clone
 where
-    Self: Default,
     N: Network,
 {
     fn add_to_network(&self, network: N) -> Result<()>;
@@ -58,26 +57,23 @@ where
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct VMNetwork<V, I, N>
+pub struct VMNetwork<V, N>
 where
     N: Network,
     V: VMInterface<N>,
-    I: NetworkInterface,
 {
     network: N,
-    vms: HashMap<String, VM>,
+    vms: HashMap<String, (VM, Vec<V>)>,
     vm: std::marker::PhantomData<V>,
-    interface: std::marker::PhantomData<I>,
 }
 
-impl<V, T, N> VMNetwork<V, T, N>
+impl<V, N> VMNetwork<V, N>
 where
     N: Network,
     V: VMInterface<N>,
-    T: NetworkInterface,
 {
-    pub fn add_vm(&mut self, vm: &VM) -> Result<()> {
-        self.vms.insert(vm.name(), vm.clone());
+    pub fn add_vm(&mut self, vm: &VM, interface: V) -> Result<()> {
+        self.vms.insert(vm.name(), (vm.clone(), vec![interface]));
         Ok(())
     }
 
@@ -86,8 +82,12 @@ where
         Ok(())
     }
 
-    pub fn list(&self) -> Result<Vec<VM>> {
-        Ok(self.vms.values().map(Clone::clone).collect::<Vec<VM>>())
+    pub fn list(&self) -> Result<Vec<(VM, Vec<V>)>> {
+        Ok(self
+            .vms
+            .values()
+            .map(|x| (x.0.clone(), x.1.clone()))
+            .collect::<Vec<(VM, Vec<V>)>>())
     }
 
     pub fn network(&self) -> N {
@@ -104,8 +104,9 @@ pub struct NetworkConfig {
     indexes: NetworkIndexMap,
 }
 
-pub type VMNetworkMap<V, T, N> = HashMap<String, VMNetwork<V, T, N>>;
+pub type VMNetworkMap<V, N> = HashMap<String, VMNetwork<V, N>>;
 
+#[derive(Debug, Clone, Default)]
 pub struct NetworkList<V, M, T, N>
 where
     N: Network,
@@ -113,8 +114,9 @@ where
     M: NetworkManager<T, N>,
     T: NetworkInterface,
 {
-    networks: VMNetworkMap<V, T, N>,
+    networks: VMNetworkMap<V, N>,
     manager: M,
+    interface: std::marker::PhantomData<T>,
 }
 
 impl<V, M, T, N> NetworkList<V, M, T, N>
@@ -163,7 +165,7 @@ where
                 network
                     .list()?
                     .iter()
-                    .map(|n| n.name())
+                    .map(|n| n.0.name())
                     .collect::<Vec<String>>(),
             );
 
@@ -181,9 +183,9 @@ where
         let mut networks = VMNetworkMap::default();
 
         for (key, vms) in map.networks {
-            let mut tmp: HashMap<String, VM> = HashMap::default();
+            let mut tmp: HashMap<String, (VM, Vec<V>)> = HashMap::default();
             for vm in vms {
-                tmp.insert(vm.clone(), vm.clone().into());
+                tmp.insert(vm.clone(), (vm.clone().into(), Vec::new()));
             }
 
             networks.insert(
@@ -198,7 +200,11 @@ where
             );
         }
 
-        Ok(Self { networks, manager })
+        Ok(Self {
+            networks,
+            manager,
+            ..Default::default()
+        })
     }
 
     pub fn manager(&self) -> M {
@@ -213,7 +219,7 @@ where
     M: NetworkManager<T, N>,
     T: NetworkInterface,
 {
-    type Target = HashMap<String, VMNetwork<V, T, N>>;
+    type Target = HashMap<String, VMNetwork<V, N>>;
 
     fn deref(&self) -> &Self::Target {
         &self.networks

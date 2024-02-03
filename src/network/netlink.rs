@@ -480,6 +480,17 @@ impl NetlinkNetworkManager {
     }
 }
 
+impl Default for NetlinkNetworkManager {
+    fn default() -> Self {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        runtime.block_on(Self::new()).unwrap()
+    }
+}
+
 impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager {
     fn create_network(&mut self, name: String) -> Result<NetlinkNetwork> {
         match self.make_call(NetlinkOperation::CreateNetwork(name)) {
