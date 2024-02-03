@@ -8,7 +8,7 @@ mod subnet;
 use self::address::Address;
 use crate::vm::VM;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -124,12 +124,34 @@ where
     M: NetworkManager<T, N>,
     T: NetworkInterface,
 {
-    pub fn create(&self, _: String) -> Result<()> {
+    pub fn exists(&self, name: &str) -> bool {
+        self.networks.contains_key(name)
+    }
+
+    pub fn create(&mut self, name: String) -> Result<()> {
+        if self.exists(&name) {
+            return Err(anyhow!("network already exists"));
+        }
+
+        let network = self.manager.create_network(name.clone())?;
+        self.networks.insert(
+            name,
+            VMNetwork {
+                network,
+                ..Default::default()
+            },
+        );
         Ok(())
     }
 
-    pub fn teardown(&self, _: String) -> Result<()> {
-        Ok(())
+    pub fn teardown(&mut self, name: String) -> Result<()> {
+        if let Some(network) = self.networks.get(&name) {
+            self.manager.delete_network(network.network())?;
+            self.networks.remove(&name);
+            Ok(())
+        } else {
+            Err(anyhow!("network doesn't exist"))
+        }
     }
 
     pub fn save(&self, filename: PathBuf) -> Result<()> {
