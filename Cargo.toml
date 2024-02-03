@@ -17,10 +17,9 @@ anyhow = "^1"
 clap = { version = "^4", features = [ "derive" ] }
 tokio = { version = "^1", features = [ "full" ] }
 rtnetlink = "^0.14"
-netlink-packet-core = "*"
-netlink-packet-utils = "*"
-netlink-packet-route = "*"
-netlink-proto = "*"
+netlink-packet-core = "^0.7"
+netlink-packet-route = "^0.19"
+netlink-proto = "^0.11"
 netlink-sys = "*"
 async-trait = "^0.1"
 futures = "^0.3"
