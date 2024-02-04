@@ -7,9 +7,10 @@ use netlink_packet_route::RouteNetlinkMessage;
 use netlink_proto::sys::SocketAddr;
 use rtnetlink::Handle;
 use serde::{de::Visitor, Deserialize, Serialize};
-use std::sync::{
-    mpsc::{sync_channel, Receiver, SyncSender},
-    Arc,
+
+use std::{
+    rc::Rc,
+    sync::mpsc::{sync_channel, Receiver, SyncSender},
 };
 
 const NAME_PREFIX: &str = "emu.";
@@ -380,7 +381,7 @@ impl NetlinkAsyncNetworkManager {
 #[derive(Clone)]
 pub struct NetlinkNetworkManager {
     callout: SyncSender<NetlinkOperation<NetlinkNetwork, NetlinkInterface>>,
-    result: Arc<Receiver<NetlinkOperationResult<NetlinkNetwork, NetlinkInterface>>>,
+    result: Rc<Receiver<NetlinkOperationResult<NetlinkNetwork, NetlinkInterface>>>,
 }
 
 impl NetlinkNetworkManager {
@@ -399,7 +400,7 @@ impl NetlinkNetworkManager {
 
         Ok(Self {
             callout: cs,
-            result: Arc::new(rr),
+            result: Rc::new(rr),
         })
     }
 
@@ -424,7 +425,7 @@ impl NetlinkNetworkManager {
                 NetlinkOperation::CreateNetwork(name) => rs
                     .send(manager.create_network(name).await.map_or_else(
                         |e| NetlinkOperationResult::Error(e.to_string()),
-                        |n| NetlinkOperationResult::CreateNetwork(n),
+                        NetlinkOperationResult::CreateNetwork,
                     ))
                     .unwrap(),
                 NetlinkOperation::DeleteNetwork(n) => rs
@@ -436,13 +437,13 @@ impl NetlinkNetworkManager {
                 NetlinkOperation::ExistsNetwork(n) => rs
                     .send(manager.exists_network(n).await.map_or_else(
                         |e| NetlinkOperationResult::Error(e.to_string()),
-                        |b| NetlinkOperationResult::ExistsNetwork(b),
+                        NetlinkOperationResult::ExistsNetwork,
                     ))
                     .unwrap(),
                 NetlinkOperation::CreateInterface(n, index) => rs
                     .send(manager.create_interface(n, index).await.map_or_else(
                         |e| NetlinkOperationResult::Error(e.to_string()),
-                        |i| NetlinkOperationResult::CreateInterface(i),
+                        NetlinkOperationResult::CreateInterface,
                     ))
                     .unwrap(),
                 NetlinkOperation::DeleteInterface(i) => rs
@@ -454,7 +455,7 @@ impl NetlinkNetworkManager {
                 NetlinkOperation::ExistsInterface(i) => rs
                     .send(manager.exists_interface(i).await.map_or_else(
                         |e| NetlinkOperationResult::Error(e.to_string()),
-                        |b| NetlinkOperationResult::ExistsInterface(b),
+                        NetlinkOperationResult::ExistsInterface,
                     ))
                     .unwrap(),
                 NetlinkOperation::Bind(n, i) => rs
