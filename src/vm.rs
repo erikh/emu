@@ -1,9 +1,10 @@
 use super::{
+    config::Configuration,
     config_storage::XDGConfigStorage,
+    network::Interface,
     supervisor::{PidSupervisor, SystemdSupervisor},
     traits::{ConfigStorageHandler, SupervisorHandler, Supervisors},
 };
-use crate::config::Configuration;
 use anyhow::Result;
 use serde::{de::Visitor, Deserialize, Serialize};
 use std::{fmt::Display, path::PathBuf, rc::Rc};
@@ -16,6 +17,7 @@ pub struct VM {
     config: Configuration,
     headless: bool,
     supervisor: Supervisors,
+    interfaces: Vec<Interface>,
 }
 
 impl std::hash::Hash for VM {

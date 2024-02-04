@@ -2,10 +2,15 @@
 // solve several problems towards making it reality.
 
 mod address;
+mod interface;
 mod netlink;
 mod subnet;
 
-use self::address::Address;
+pub use self::{
+    address::Address,
+    interface::{Interface, MacAddr},
+};
+
 use crate::vm::VM;
 
 use anyhow::{anyhow, Result};
@@ -47,7 +52,7 @@ where
     fn add_address(&mut self, interface: I, address: Address) -> Result<()>;
 }
 
-pub trait VMInterface<N>: Default + Clone
+pub trait VMInterface<N>: Default + Clone + Into<Interface> + From<Interface>
 where
     N: Network,
 {
@@ -63,7 +68,7 @@ where
     V: VMInterface<N>,
 {
     network: N,
-    vms: HashMap<String, (VM, Vec<V>)>,
+    vms: HashMap<String, VM>,
     vm: std::marker::PhantomData<V>,
 }
 
@@ -72,8 +77,8 @@ where
     N: Network,
     V: VMInterface<N>,
 {
-    pub fn add_vm(&mut self, vm: &VM, interface: V) -> Result<()> {
-        self.vms.insert(vm.name(), (vm.clone(), vec![interface]));
+    pub fn add_vm(&mut self, vm: &VM) -> Result<()> {
+        self.vms.insert(vm.name(), vm.clone());
         Ok(())
     }
 
@@ -82,12 +87,8 @@ where
         Ok(())
     }
 
-    pub fn list(&self) -> Result<Vec<(VM, Vec<V>)>> {
-        Ok(self
-            .vms
-            .values()
-            .map(|x| (x.0.clone(), x.1.clone()))
-            .collect::<Vec<(VM, Vec<V>)>>())
+    pub fn list(&self) -> Result<Vec<VM>> {
+        Ok(self.vms.values().map(Clone::clone).collect::<Vec<VM>>())
     }
 
     pub fn network(&self) -> N {
@@ -165,7 +166,7 @@ where
                 network
                     .list()?
                     .iter()
-                    .map(|n| n.0.name())
+                    .map(|n| n.name())
                     .collect::<Vec<String>>(),
             );
 
@@ -183,9 +184,9 @@ where
         let mut networks = VMNetworkMap::default();
 
         for (key, vms) in map.networks {
-            let mut tmp: HashMap<String, (VM, Vec<V>)> = HashMap::default();
+            let mut tmp: HashMap<String, VM> = HashMap::default();
             for vm in vms {
-                tmp.insert(vm.clone(), (vm.clone().into(), Vec::new()));
+                tmp.insert(vm.clone(), vm.into());
             }
 
             networks.insert(
