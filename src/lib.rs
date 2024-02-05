@@ -2,6 +2,7 @@ pub mod command;
 pub mod command_handler;
 pub mod config;
 pub mod config_storage;
+pub mod helper;
 pub mod image;
 pub mod launcher;
 #[allow(dead_code)]
