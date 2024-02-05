@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::Permissions,
@@ -9,7 +9,10 @@ use std::{
 use tokio::{
     io::AsyncWriteExt,
     net::{UnixListener, UnixStream},
-    sync::Mutex,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        Mutex,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -57,10 +60,10 @@ fn socket_filename(uid: u16) -> PathBuf {
     PathBuf::from(format!("/tmp/emu-{}.sock", uid))
 }
 
-async fn handle_stream(
-    stream: Arc<Mutex<UnixStream>>,
-    mut f: impl FnMut(HelperMessage) -> Result<Option<HelperMessage>>,
-) {
+async fn handle_stream<T>(stream: Arc<Mutex<UnixStream>>, f: impl Fn(HelperMessage) -> T)
+where
+    T: std::future::Future<Output = Result<Option<HelperMessage>>>,
+{
     let mut buf = [0u8; 4096];
     let mut message = Vec::with_capacity(4096);
 
@@ -70,7 +73,7 @@ async fn handle_stream(
 
             while let Some((pos, msg)) = extract_message(&message) {
                 message = message.iter().skip(pos).copied().collect::<Vec<u8>>();
-                match f(msg) {
+                match f(msg).await {
                     Ok(Some(response)) => {
                         if send_message(stream.clone(), response).await.is_err() {
                             return;
@@ -92,22 +95,53 @@ async fn send_message(stream: Arc<Mutex<UnixStream>>, message: HelperMessage) ->
     Ok(lock.write_all(vec![b'\n', b'\n'].as_slice()).await?)
 }
 
-#[allow(dead_code)]
+#[derive(Debug, Clone)]
 pub struct UnixClient {
     stream: Arc<Mutex<UnixStream>>,
+    replies: Arc<Mutex<Receiver<HelperMessage>>>,
 }
 
-#[allow(dead_code)]
 impl UnixClient {
     pub async fn new(uid: u16) -> Result<Self> {
         let stream = Arc::new(Mutex::new(UnixStream::connect(socket_filename(uid)).await?));
-        let s = stream.clone();
-        tokio::spawn(async move { handle_stream(s, Self::process_message).await });
-        Ok(Self { stream })
+        let sclone = stream.clone();
+
+        let (s, r) = channel(1);
+
+        tokio::spawn(async move {
+            handle_stream(sclone, |msg| Self::process_message(s.clone(), msg)).await
+        });
+
+        Ok(Self {
+            stream,
+            replies: Arc::new(Mutex::new(r)),
+        })
     }
 
-    pub fn process_message(_message: HelperMessage) -> Result<Option<HelperMessage>> {
-        Ok(None)
+    async fn process_message(
+        sender: Sender<HelperMessage>,
+        message: HelperMessage,
+    ) -> Result<Option<HelperMessage>> {
+        match message {
+            HelperMessage::Response(_) => {
+                sender.send(message).await?;
+                Ok(None)
+            }
+            HelperMessage::Request(_) => Err(anyhow!("got out-of-order response")),
+        }
+    }
+
+    pub async fn ping(&self) -> Result<()> {
+        send_message(
+            self.stream.clone(),
+            HelperMessage::Request(HelperRequest::Ping),
+        )
+        .await?;
+
+        match self.replies.lock().await.recv().await {
+            Some(_) => Ok(()),
+            None => Err(anyhow!("No response")),
+        }
     }
 }
 
@@ -127,8 +161,13 @@ impl UnixServer {
         Ok(obj)
     }
 
-    pub fn process_message(_message: HelperMessage) -> Result<Option<HelperMessage>> {
-        Ok(None)
+    async fn process_message(message: HelperMessage) -> Result<Option<HelperMessage>> {
+        match message {
+            HelperMessage::Request(req) => match req {
+                HelperRequest::Ping => Ok(Some(HelperMessage::Response(HelperResponse::Pong))),
+            },
+            HelperMessage::Response(_) => Err(anyhow!("got out-of-order response")),
+        }
     }
 
     pub async fn listen(&mut self) {
