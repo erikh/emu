@@ -134,6 +134,9 @@ pub enum CommandType {
     /// Show and manipulate VM snapshots
     #[command(subcommand)]
     Snapshot(SnapshotSubcommand),
+    /// Communicate with the emu helper
+    #[command(subcommand)]
+    Helper(HelperSubcommand),
     /// Is this VM currently active?
     IsActive {
         /// Name of VM
@@ -164,6 +167,12 @@ pub enum CommandType {
         /// Name of VM
         name: String,
     },
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum HelperSubcommand {
+    /// Ping the helper to see if it's alive
+    Ping,
 }
 
 #[derive(Debug, Subcommand, Clone)]

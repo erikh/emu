@@ -10,7 +10,7 @@ use tokio::{
     io::AsyncWriteExt,
     net::{UnixListener, UnixStream},
     sync::{
-        mpsc::{channel, Receiver, Sender},
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         Mutex,
     },
 };
@@ -41,7 +41,7 @@ fn extract_message(message: &[u8]) -> Option<(usize, HelperMessage)> {
             if half {
                 match serde_json::from_slice(&message[..x]) {
                     Ok(res) => {
-                        return Some((x, res));
+                        return Some((x + 1, res));
                     }
                     Err(_) => half = false,
                 }
@@ -56,7 +56,7 @@ fn extract_message(message: &[u8]) -> Option<(usize, HelperMessage)> {
     None
 }
 
-fn socket_filename(uid: u16) -> PathBuf {
+fn socket_filename(uid: u32) -> PathBuf {
     PathBuf::from(format!("/tmp/emu-{}.sock", uid))
 }
 
@@ -67,22 +67,29 @@ where
     let mut buf = [0u8; 4096];
     let mut message = Vec::with_capacity(4096);
 
-    while let Ok(size) = stream.lock().await.try_read(&mut buf) {
-        if size > 0 {
-            message.append(&mut buf[..size].to_vec());
-
-            while let Some((pos, msg)) = extract_message(&message) {
-                message = message.iter().skip(pos).copied().collect::<Vec<u8>>();
-                match f(msg).await {
-                    Ok(Some(response)) => {
-                        if send_message(stream.clone(), response).await.is_err() {
-                            return;
+    loop {
+        let lock = stream.lock().await;
+        let res = lock.try_read(&mut buf);
+        drop(lock);
+        match res {
+            Ok(size) => {
+                if size > 0 {
+                    message.append(&mut buf[..size].to_vec());
+                    while let Some((pos, msg)) = extract_message(&message) {
+                        message = message.iter().skip(pos).copied().collect::<Vec<u8>>();
+                        match f(msg).await {
+                            Ok(Some(response)) => {
+                                if send_message(stream.clone(), response).await.is_err() {
+                                    return;
+                                }
+                            }
+                            Ok(None) => {}
+                            Err(_) => return,
                         }
                     }
-                    Ok(None) => {}
-                    Err(_) => return,
                 }
             }
+            Err(_) => {}
         }
 
         tokio::time::sleep(std::time::Duration::new(0, 500)).await;
@@ -92,21 +99,26 @@ where
 async fn send_message(stream: Arc<Mutex<UnixStream>>, message: HelperMessage) -> Result<()> {
     let mut lock = stream.lock().await;
     lock.write_all(&serde_json::to_vec(&message)?).await?;
-    Ok(lock.write_all(vec![b'\n', b'\n'].as_slice()).await?)
+    lock.write_all(vec![b'\n', b'\n'].as_slice()).await?;
+    Ok(lock.flush().await?)
 }
 
 #[derive(Debug, Clone)]
 pub struct UnixClient {
     stream: Arc<Mutex<UnixStream>>,
-    replies: Arc<Mutex<Receiver<HelperMessage>>>,
+    replies: Arc<Mutex<UnboundedReceiver<HelperMessage>>>,
 }
 
 impl UnixClient {
-    pub async fn new(uid: u16) -> Result<Self> {
-        let stream = Arc::new(Mutex::new(UnixStream::connect(socket_filename(uid)).await?));
+    pub async fn new(uid: u32) -> Result<Self> {
+        let stream = match UnixStream::connect(socket_filename(uid)).await {
+            Ok(stream) => Arc::new(Mutex::new(stream)),
+            Err(e) => return Err(anyhow!("Couldn't connect to socket: {}", e)),
+        };
+
         let sclone = stream.clone();
 
-        let (s, r) = channel(1);
+        let (s, r) = unbounded_channel();
 
         tokio::spawn(async move {
             handle_stream(sclone, |msg| Self::process_message(s.clone(), msg)).await
@@ -119,12 +131,12 @@ impl UnixClient {
     }
 
     async fn process_message(
-        sender: Sender<HelperMessage>,
+        sender: UnboundedSender<HelperMessage>,
         message: HelperMessage,
     ) -> Result<Option<HelperMessage>> {
         match message {
             HelperMessage::Response(_) => {
-                sender.send(message).await?;
+                sender.send(message)?;
                 Ok(None)
             }
             HelperMessage::Request(_) => Err(anyhow!("got out-of-order response")),
@@ -150,8 +162,9 @@ pub struct UnixServer {
 }
 
 impl UnixServer {
-    pub async fn new(uid: u16, gid: u16) -> Result<Self> {
+    pub async fn new(uid: u32, gid: u32) -> Result<Self> {
         let filename = socket_filename(uid);
+        let _ = std::fs::remove_file(filename.clone());
         let obj = Self {
             listener: UnixListener::bind(filename.clone())?,
         };

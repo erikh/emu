@@ -305,6 +305,7 @@ dependencies = [
  "netlink-packet-core",
  "netlink-packet-route",
  "netlink-proto",
+ "nix",
  "rtnetlink",
  "serde",
  "serde_json",
