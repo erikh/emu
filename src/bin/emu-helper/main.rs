@@ -2,16 +2,17 @@ use anyhow::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let uid = std::env::args()
+    let mut args = std::env::args();
+    let uid = args
         .nth(1)
         .expect("Expected a UID")
-        .parse::<u16>()
+        .parse::<u32>()
         .expect("Expected a UID");
 
-    let gid = std::env::args()
+    let gid = args
         .next()
         .expect("Expected a GID")
-        .parse::<u16>()
+        .parse::<u32>()
         .expect("Expected a GID");
 
     let mut server = emu_cli::helper::UnixServer::new(uid, gid).await?;

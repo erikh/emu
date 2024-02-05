@@ -8,6 +8,7 @@ license = "MIT"
 homepage = "https://github.com/erikh/emu"
 repository = "https://github.com/erikh/emu"
 keywords = [ "qemu", "vm", "linux", "cli", "ui" ]
+default-run = "emu"
 
 [dependencies]
 tinytemplate = "^1"
@@ -27,6 +28,7 @@ fork = "^0.1"
 byte-unit = "^5"
 toml = "^0.8"
 kdam = "^0.5"
+nix = { version = "^0.27", features = [ "user" ] }
 
 [dev-dependencies]
 tempfile = "^3"

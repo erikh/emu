@@ -6,7 +6,7 @@ use super::{
     traits::{ConfigStorageHandler, ImageHandler, Launcher, SupervisorHandler},
     vm::VM,
 };
-use crate::{qmp::client::Client, util::valid_filename};
+use crate::{helper::UnixClient, qmp::client::Client, util::valid_filename};
 use anyhow::{anyhow, Result};
 use std::{path::PathBuf, process::Command, rc::Rc, sync::Arc};
 use tokio::{
@@ -32,6 +32,16 @@ impl Default for CommandHandler {
 }
 
 impl CommandHandler {
+    pub async fn helper_ping(&self) -> Result<()> {
+        UnixClient::new(nix::unistd::getuid().as_raw())
+            .await?
+            .ping()
+            .await?;
+
+        println!("Monitor reached.");
+        Ok(())
+    }
+
     pub fn reset(&self, vm: &VM) -> Result<()> {
         self.launcher.reset(vm)
     }
