@@ -1,3 +1,4 @@
+use crate::network::Interface;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Write, path::PathBuf};
 
@@ -16,6 +17,7 @@ pub type PortMap = HashMap<String, u16>;
 pub struct Configuration {
     pub machine: MachineConfiguration,
     pub ports: PortMap,
+    pub interfaces: Vec<Interface>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,6 +48,7 @@ impl Default for Configuration {
                 image_interface: DEFAULT_IMAGE_INTERFACE.to_string(),
             },
             ports: HashMap::new(),
+            interfaces: Vec::new(),
         }
     }
 }
@@ -198,6 +201,7 @@ mod tests {
                 vga: Default::default(),
             },
             ports: Default::default(),
+            interfaces: Default::default(),
         };
 
         orig.to_file(path.clone())?;
