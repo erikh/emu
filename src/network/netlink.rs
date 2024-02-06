@@ -5,8 +5,8 @@ use futures_channel::mpsc::UnboundedReceiver;
 use netlink_packet_core::NetlinkMessage;
 use netlink_packet_route::RouteNetlinkMessage;
 use netlink_proto::sys::SocketAddr;
+use rand::prelude::*;
 use rtnetlink::Handle;
-use serde::{de::Visitor, Deserialize, Serialize};
 
 use std::{
     rc::Rc,
@@ -17,133 +17,43 @@ const NAME_PREFIX: &str = "emu.";
 
 #[derive(Debug, Clone, Default)]
 pub struct NetlinkNetwork {
-    name: String,
-    index: Option<u32>,
-}
-
-impl Network for NetlinkNetwork {
-    fn index(&self) -> Option<u32> {
-        self.index
-    }
-
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    fn set_name(&self, name: String) -> Self {
-        let mut s = self.clone();
-        s.name = name;
-        s
-    }
-
-    fn set_index(&self, index: u32) -> Self {
-        let mut s = self.clone();
-        s.index = Some(index);
-        s
-    }
-}
-
-impl Serialize for NetlinkNetwork {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.name)
-    }
-}
-
-struct NetlinkNetworkVisitor;
-
-impl Visitor<'_> for NetlinkNetworkVisitor {
-    type Value = NetlinkNetwork;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("expecting a network name")
-    }
-
-    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(NetlinkNetwork {
-            name: v.to_string(),
-            index: None,
-        })
-    }
-}
-
-impl<'de> Deserialize<'de> for NetlinkNetwork {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_str(NetlinkNetworkVisitor)
-    }
+    network: Network,
+    index: u32,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct NetlinkInterface {
-    name: String,
     peer_name: String,
     index: u32,
-    id: u32,
-    addresses: Vec<Address>,
-}
-
-impl NetworkInterface for NetlinkInterface {
-    fn id(&self) -> Option<u32> {
-        Some(self.id)
-    }
-
-    fn peer_name(&self) -> Option<String> {
-        Some(self.peer_name.clone())
-    }
-
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-
-    fn index(&self) -> Option<u32> {
-        Some(self.index)
-    }
-
-    fn addresses(&self) -> Vec<Address> {
-        self.addresses.clone()
-    }
+    interface: Interface,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum NetlinkOperation<N, I>
-where
-    N: Network,
-    I: NetworkInterface,
-{
+pub enum NetlinkOperation {
     CreateNetwork(String),
-    DeleteNetwork(N),
-    ExistsNetwork(N),
-    CreateInterface(N, u32),
-    DeleteInterface(I),
-    ExistsInterface(I),
-    Bind(N, I),
-    Unbind(I),
-    AddAddress(I, Address),
+    DeleteNetwork(Network),
+    ExistsNetwork(Network),
+    CreateInterface,
+    DeleteInterface(Interface),
+    ExistsInterface(Interface),
+    Bind(Network, Interface),
+    Unbind(Interface),
+    AddAddress(Interface, Address),
 }
 
 #[derive(Debug, Clone)]
-pub enum NetlinkOperationResult<N, I>
-where
-    N: Network,
-    I: NetworkInterface,
-{
-    CreateNetwork(N),
+pub enum NetlinkOperationResult {
+    CreateNetwork(Network),
+    CreateInterface(Interface),
     ExistsNetwork(bool),
-    CreateInterface(I),
     ExistsInterface(bool),
     Success,
     Error(String),
 }
 
 pub struct NetlinkAsyncNetworkManager {
+    networks: NetworkCache,
+    interfaces: InterfaceCache,
     connection: tokio::task::JoinHandle<()>,
     handle: Handle,
     receiver: UnboundedReceiver<(NetlinkMessage<RouteNetlinkMessage>, SocketAddr)>,
@@ -153,6 +63,8 @@ impl NetlinkAsyncNetworkManager {
     async fn new() -> Result<Self> {
         match rtnetlink::new_connection() {
             Ok((c, handle, r)) => Ok(Self {
+                networks: Default::default(),
+                interfaces: Default::default(),
                 connection: tokio::spawn(c),
                 handle,
                 receiver: r,
@@ -161,8 +73,58 @@ impl NetlinkAsyncNetworkManager {
         }
     }
 
+    async fn from_interface(&self, interface: Interface) -> Result<NetlinkInterface> {
+        self.interfaces.clone().lookup(interface.name, self).await
+    }
+
     fn bridge_name(name: &str) -> String {
         NAME_PREFIX.to_string() + name
+    }
+
+    async fn lookup_network(&self, name: String) -> Result<NetlinkNetwork> {
+        if let Some(resp) = self
+            .handle
+            .link()
+            .get()
+            .match_name(name.clone())
+            .execute()
+            .try_next()
+            .await?
+        {
+            Ok(NetlinkNetwork {
+                index: resp.header.index,
+                network: Network { name },
+            })
+        } else {
+            Err(anyhow!("network {} not found", name))
+        }
+    }
+
+    async fn lookup_interface(&self, name: String) -> Result<NetlinkInterface> {
+        let resp = self
+            .handle
+            .link()
+            .get()
+            .match_name(name.clone())
+            .execute()
+            .try_next()
+            .await;
+
+        match resp {
+            Ok(Some(resp)) => Ok(NetlinkInterface {
+                peer_name: format!("{}-peer", name.clone()),
+                index: resp.header.index,
+                interface: Interface {
+                    name,
+                    macaddr: None,
+                    mtu: 1500,
+                    up: false,
+                    addresses: Vec::new(),
+                },
+            }),
+            Err(e) => Err(anyhow!(e)),
+            Ok(None) => Err(anyhow!("could not retrieve interface after creating it")),
+        }
     }
 
     async fn bridge_index(&self, name: &str) -> Result<u32> {
@@ -196,69 +158,37 @@ impl NetlinkAsyncNetworkManager {
             Ok(_) => {
                 let index = self.bridge_index(&name).await?;
                 Ok(NetlinkNetwork {
-                    name: bridge_name,
-                    index: Some(index),
+                    network: Network { name: bridge_name },
+                    index,
                 })
             }
             Err(e) => Err(anyhow!(e)),
         }
     }
 
-    async fn delete_network(&self, mut network: NetlinkNetwork) -> Result<()> {
-        if network.index.is_none() {
-            if let Ok(index) = self.bridge_index(&network.name).await {
-                network.index = Some(index);
-            } else {
-                return Err(anyhow!("Network {} was never created", network.name));
-            }
-        }
-
-        let resp = self
-            .handle
-            .link()
-            .del(network.index.unwrap())
-            .execute()
-            .await;
+    async fn delete_network(&self, network: Network) -> Result<()> {
+        let index = self.networks.lookup(network.name, self).await?;
+        let resp = self.handle.link().del(index).execute().await;
         match resp {
             Ok(_) => Ok(()),
             Err(e) => Err(anyhow!(e)),
         }
     }
 
-    async fn exists_network(&self, mut network: NetlinkNetwork) -> Result<bool> {
-        if network.index.is_none() {
-            if let Ok(index) = self.bridge_index(&network.name).await {
-                network.index = Some(index);
-            } else {
-                return Ok(false);
-            }
-        }
-
-        let resp = self
-            .handle
-            .link()
-            .get()
-            .match_index(network.index.unwrap())
-            .match_name(network.name.clone())
-            .execute()
-            .try_next()
-            .await;
-
-        match resp {
-            Ok(_) => Ok(true),
-            Err(e) => match e.clone() {
-                rtnetlink::Error::NetlinkError(ne) => match ne.raw_code() {
-                    -19 => Ok(false), // no such device
-                    _ => Err(anyhow!(e)),
-                },
-                _ => Err(anyhow!(e)),
-            },
-        }
+    async fn exists_network(&self, network: Network) -> Result<bool> {
+        Ok(self.networks.lookup(network.name, self).await.is_ok())
     }
 
-    async fn create_interface(&self, network: NetlinkNetwork, id: u32) -> Result<NetlinkInterface> {
-        let if_name = network.name.clone() + &format!("-{}", id);
-        let peer_name = network.name.clone() + &format!("-{}-peer", id);
+    async fn create_interface(&self) -> Result<Interface> {
+        let id = vec!['a'..'z', 'A'..'Z', '0'..'9']
+            .iter()
+            .map(|x| x.clone().map(|y| y.to_string()).collect::<Vec<String>>())
+            .flatten()
+            .choose_multiple(&mut rand::thread_rng(), rand::random::<usize>() % 5 + 5)
+            .join("");
+
+        let if_name = format!("emu-{}", id);
+        let peer_name = format!("emu-{}-peer", id);
         let resp = self
             .handle
             .link()
@@ -268,77 +198,16 @@ impl NetlinkAsyncNetworkManager {
             .await;
 
         match resp {
-            Ok(_) => {
-                let resp = self
-                    .handle
-                    .link()
-                    .get()
-                    .match_name(if_name.clone())
-                    .execute()
-                    .try_next()
-                    .await;
-
-                match resp {
-                    Ok(Some(resp)) => Ok(NetlinkInterface {
-                        name: if_name,
-                        addresses: Vec::new(),
-                        peer_name,
-                        index: resp.header.index,
-                        id,
-                    }),
-                    Err(e) => Err(anyhow!(e)),
-                    Ok(None) => Err(anyhow!("could not retrieve interface after creating it")),
-                }
-            }
+            Ok(_) => self.lookup_interface(if_name).await.map(|x| x.interface),
             Err(e) => Err(anyhow!(e)),
         }
     }
 
-    async fn delete_interface(&self, interface: NetlinkInterface) -> Result<()> {
-        let resp = self.handle.link().del(interface.index).execute().await;
-
-        match resp {
-            Ok(_) => Ok(()),
-            Err(e) => Err(anyhow!(e)),
-        }
-    }
-
-    async fn exists_interface(&self, interface: NetlinkInterface) -> Result<bool> {
+    async fn delete_interface(&self, interface: Interface) -> Result<()> {
         let resp = self
             .handle
             .link()
-            .get()
-            .match_name(interface.name)
-            .match_index(interface.index)
-            .execute()
-            .try_next()
-            .await;
-        match resp {
-            Ok(_) => Ok(true),
-            Err(e) => match e.clone() {
-                rtnetlink::Error::NetlinkError(ne) => match ne.raw_code() {
-                    -19 => Ok(false), // no such device
-                    _ => Err(anyhow!(e)),
-                },
-                _ => Err(anyhow!(e)),
-            },
-        }
-    }
-
-    async fn bind(&self, mut network: NetlinkNetwork, interface: NetlinkInterface) -> Result<()> {
-        if network.index.is_none() {
-            if let Ok(index) = self.bridge_index(&network.name).await {
-                network.index = Some(index);
-            } else {
-                return Err(anyhow!("Network {} was never created", network.name));
-            }
-        }
-
-        let resp = self
-            .handle
-            .link()
-            .set(interface.index)
-            .controller(network.index.unwrap())
+            .del(self.from_interface(interface).await?.index)
             .execute()
             .await;
 
@@ -348,11 +217,31 @@ impl NetlinkAsyncNetworkManager {
         }
     }
 
-    async fn unbind(&self, interface: NetlinkInterface) -> Result<()> {
+    async fn exists_interface(&self, interface: Interface) -> Result<bool> {
+        Ok(self.interfaces.lookup(interface.name, self).await.is_ok())
+    }
+
+    async fn bind(&self, network: Network, interface: Interface) -> Result<()> {
+        let index = self.networks.lookup(network.name, self).await?;
         let resp = self
             .handle
             .link()
-            .set(interface.index)
+            .set(self.from_interface(interface).await?.index)
+            .controller(index)
+            .execute()
+            .await;
+
+        match resp {
+            Ok(_) => Ok(()),
+            Err(e) => Err(anyhow!(e)),
+        }
+    }
+
+    async fn unbind(&self, interface: Interface) -> Result<()> {
+        let resp = self
+            .handle
+            .link()
+            .set(self.from_interface(interface).await?.index)
             .controller(0)
             .execute()
             .await;
@@ -363,11 +252,15 @@ impl NetlinkAsyncNetworkManager {
         }
     }
 
-    async fn add_address(&self, interface: NetlinkInterface, address: Address) -> Result<()> {
+    async fn add_address(&self, interface: Interface, address: Address) -> Result<()> {
         let resp = self
             .handle
             .address()
-            .add(interface.index, address.ip, address.mask)
+            .add(
+                self.from_interface(interface).await?.index,
+                address.ip,
+                address.mask,
+            )
             .execute()
             .await;
 
@@ -378,14 +271,82 @@ impl NetlinkAsyncNetworkManager {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+struct NetworkCache(HashMap<String, u32>);
+
+impl NetworkCache {
+    async fn lookup_add(
+        &mut self,
+        name: String,
+        manager: &NetlinkAsyncNetworkManager,
+    ) -> Result<u32> {
+        Ok(match self.lookup(name.clone(), manager).await {
+            Ok(res) => {
+                self.0.insert(name, res);
+                res
+            }
+            Err(_) => {
+                // FIXME: sloppy
+                let network = manager.create_network(name.clone()).await?;
+                self.0.insert(name, network.index);
+                network.index
+            }
+        })
+    }
+
+    async fn lookup(&self, name: String, manager: &NetlinkAsyncNetworkManager) -> Result<u32> {
+        Ok(if let Some(res) = self.0.get(&name) {
+            *res
+        } else {
+            manager.lookup_network(name.clone()).await?.index
+        })
+    }
+}
+#[derive(Debug, Clone, Default)]
+struct InterfaceCache(HashMap<String, NetlinkInterface>);
+
+impl InterfaceCache {
+    async fn lookup_add(
+        &mut self,
+        name: String,
+        manager: &NetlinkAsyncNetworkManager,
+    ) -> Result<NetlinkInterface> {
+        Ok(match self.lookup(name.clone(), manager).await {
+            Ok(res) => {
+                self.0.insert(name, res.clone());
+                res
+            }
+            Err(_) => {
+                // FIXME: sloppy
+                manager.create_interface().await?;
+                let res = manager.lookup_interface(name.clone()).await?;
+                self.0.insert(name, res.clone());
+                res
+            }
+        })
+    }
+
+    async fn lookup(
+        &self,
+        name: String,
+        manager: &NetlinkAsyncNetworkManager,
+    ) -> Result<NetlinkInterface> {
+        if let Some(res) = self.0.get(&name) {
+            Ok(res.clone())
+        } else {
+            manager.lookup_interface(name.clone()).await
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct NetlinkNetworkManager {
-    callout: SyncSender<NetlinkOperation<NetlinkNetwork, NetlinkInterface>>,
-    result: Rc<Receiver<NetlinkOperationResult<NetlinkNetwork, NetlinkInterface>>>,
+    callout: SyncSender<NetlinkOperation>,
+    result: Rc<Receiver<NetlinkOperationResult>>,
 }
 
 impl NetlinkNetworkManager {
-    async fn new() -> Result<Self> {
+    pub async fn new() -> Result<Self> {
         let (cs, cr) = sync_channel(1);
         let (rs, rr) = sync_channel(1);
 
@@ -404,10 +365,7 @@ impl NetlinkNetworkManager {
         })
     }
 
-    fn make_call(
-        &mut self,
-        operation: NetlinkOperation<NetlinkNetwork, NetlinkInterface>,
-    ) -> NetlinkOperationResult<NetlinkNetwork, NetlinkInterface> {
+    fn make_call(&mut self, operation: NetlinkOperation) -> NetlinkOperationResult {
         self.callout.send(operation).unwrap();
         match self.result.recv_timeout(std::time::Duration::new(1, 0)) {
             Ok(res) => res,
@@ -417,15 +375,15 @@ impl NetlinkNetworkManager {
 
     async fn monitor_calls(
         manager: &mut NetlinkAsyncNetworkManager,
-        cr: Receiver<NetlinkOperation<NetlinkNetwork, NetlinkInterface>>,
-        rs: SyncSender<NetlinkOperationResult<NetlinkNetwork, NetlinkInterface>>,
+        cr: Receiver<NetlinkOperation>,
+        rs: SyncSender<NetlinkOperationResult>,
     ) {
         while let Ok(operation) = cr.try_recv() {
             match operation {
                 NetlinkOperation::CreateNetwork(name) => rs
                     .send(manager.create_network(name).await.map_or_else(
                         |e| NetlinkOperationResult::Error(e.to_string()),
-                        NetlinkOperationResult::CreateNetwork,
+                        |n| NetlinkOperationResult::CreateNetwork(n.network),
                     ))
                     .unwrap(),
                 NetlinkOperation::DeleteNetwork(n) => rs
@@ -440,10 +398,10 @@ impl NetlinkNetworkManager {
                         NetlinkOperationResult::ExistsNetwork,
                     ))
                     .unwrap(),
-                NetlinkOperation::CreateInterface(n, index) => rs
-                    .send(manager.create_interface(n, index).await.map_or_else(
+                NetlinkOperation::CreateInterface => rs
+                    .send(manager.create_interface().await.map_or_else(
                         |e| NetlinkOperationResult::Error(e.to_string()),
-                        NetlinkOperationResult::CreateInterface,
+                        |i| NetlinkOperationResult::CreateInterface(i),
                     ))
                     .unwrap(),
                 NetlinkOperation::DeleteInterface(i) => rs
@@ -492,8 +450,8 @@ impl Default for NetlinkNetworkManager {
     }
 }
 
-impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager {
-    fn create_network(&mut self, name: String) -> Result<NetlinkNetwork> {
+impl NetworkManager for NetlinkNetworkManager {
+    fn create_network(&mut self, name: String) -> Result<Network> {
         match self.make_call(NetlinkOperation::CreateNetwork(name)) {
             NetlinkOperationResult::CreateNetwork(n) => Ok(n),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
@@ -501,7 +459,7 @@ impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager 
         }
     }
 
-    fn delete_network(&mut self, network: NetlinkNetwork) -> Result<()> {
+    fn delete_network(&mut self, network: Network) -> Result<()> {
         match self.make_call(NetlinkOperation::DeleteNetwork(network)) {
             NetlinkOperationResult::Success => Ok(()),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
@@ -509,7 +467,7 @@ impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager 
         }
     }
 
-    fn exists_network(&mut self, network: NetlinkNetwork) -> Result<bool> {
+    fn exists_network(&mut self, network: Network) -> Result<bool> {
         match self.make_call(NetlinkOperation::ExistsNetwork(network)) {
             NetlinkOperationResult::ExistsNetwork(b) => Ok(b),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
@@ -517,15 +475,15 @@ impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager 
         }
     }
 
-    fn create_interface(&mut self, network: NetlinkNetwork, id: u32) -> Result<NetlinkInterface> {
-        match self.make_call(NetlinkOperation::CreateInterface(network, id)) {
+    fn create_interface(&mut self) -> Result<Interface> {
+        match self.make_call(NetlinkOperation::CreateInterface) {
             NetlinkOperationResult::CreateInterface(i) => Ok(i),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
             _ => Err(anyhow!("Unexpected result in netlink call")),
         }
     }
 
-    fn delete_interface(&mut self, interface: NetlinkInterface) -> Result<()> {
+    fn delete_interface(&mut self, interface: Interface) -> Result<()> {
         match self.make_call(NetlinkOperation::DeleteInterface(interface)) {
             NetlinkOperationResult::Success => Ok(()),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
@@ -533,7 +491,7 @@ impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager 
         }
     }
 
-    fn exists_interface(&mut self, interface: NetlinkInterface) -> Result<bool> {
+    fn exists_interface(&mut self, interface: Interface) -> Result<bool> {
         match self.make_call(NetlinkOperation::ExistsInterface(interface)) {
             NetlinkOperationResult::ExistsInterface(b) => Ok(b),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
@@ -541,7 +499,7 @@ impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager 
         }
     }
 
-    fn unbind(&mut self, interface: NetlinkInterface) -> Result<()> {
+    fn unbind(&mut self, interface: Interface) -> Result<()> {
         match self.make_call(NetlinkOperation::Unbind(interface)) {
             NetlinkOperationResult::Success => Ok(()),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
@@ -549,7 +507,7 @@ impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager 
         }
     }
 
-    fn bind(&mut self, network: NetlinkNetwork, interface: NetlinkInterface) -> Result<()> {
+    fn bind(&mut self, network: Network, interface: Interface) -> Result<()> {
         match self.make_call(NetlinkOperation::Bind(network, interface)) {
             NetlinkOperationResult::Success => Ok(()),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),
@@ -557,7 +515,7 @@ impl NetworkManager<NetlinkInterface, NetlinkNetwork> for NetlinkNetworkManager 
         }
     }
 
-    fn add_address(&mut self, interface: NetlinkInterface, address: Address) -> Result<()> {
+    fn add_address(&mut self, interface: Interface, address: Address) -> Result<()> {
         match self.make_call(NetlinkOperation::AddAddress(interface, address)) {
             NetlinkOperationResult::Success => Ok(()),
             NetlinkOperationResult::Error(e) => Err(anyhow!(e)),

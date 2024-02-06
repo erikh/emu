@@ -1,3 +1,4 @@
+use crate::network::NetworkManagerType;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -162,7 +163,7 @@ pub struct UnixServer {
 }
 
 impl UnixServer {
-    pub async fn new(uid: u32, gid: u32) -> Result<Self> {
+    pub async fn new(uid: u32, gid: u32, _network: NetworkManagerType) -> Result<Self> {
         let filename = socket_filename(uid);
         let _ = std::fs::remove_file(filename.clone());
         let obj = Self {
