@@ -29,6 +29,7 @@ byte-unit = "^5"
 toml = "^0.8"
 kdam = "^0.5"
 nix = { version = "^0.27", features = [ "user" ] }
+rand = "*"
 
 [dev-dependencies]
 tempfile = "^3"

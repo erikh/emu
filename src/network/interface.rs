@@ -43,13 +43,13 @@ impl std::fmt::Display for MacAddr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Interface {
-    name: String,
-    macaddr: MacAddr,
-    mtu: u16,
-    up: bool,
-    addresses: Vec<Address>,
+    pub(crate) name: String,
+    pub(crate) macaddr: Option<MacAddr>,
+    pub(crate) mtu: u16,
+    pub(crate) up: bool,
+    pub(crate) addresses: Vec<Address>,
 }
 
 #[cfg(test)]
