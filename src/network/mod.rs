@@ -29,6 +29,14 @@ pub enum NetworkManagerType {
     Netlink,
 }
 
+impl NetworkManagerType {
+    pub fn into_manager(&self) -> Box<dyn NetworkManager> {
+        match self {
+            Self::Netlink => Box::<NetlinkNetworkManager>::default(),
+        }
+    }
+}
+
 impl std::fmt::Display for NetworkManagerType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
