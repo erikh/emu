@@ -9,8 +9,8 @@ use rand::prelude::*;
 use rtnetlink::Handle;
 
 use std::{
-    rc::Rc,
     sync::mpsc::{sync_channel, Receiver, SyncSender},
+    sync::{Arc, Mutex},
 };
 
 const NAME_PREFIX: &str = "emu.";
@@ -341,8 +341,8 @@ impl InterfaceCache {
 
 #[derive(Clone)]
 pub struct NetlinkNetworkManager {
-    callout: SyncSender<NetlinkOperation>,
-    result: Rc<Receiver<NetlinkOperationResult>>,
+    callout: Arc<Mutex<SyncSender<NetlinkOperation>>>,
+    result: Arc<Mutex<Receiver<NetlinkOperationResult>>>,
 }
 
 impl NetlinkNetworkManager {
@@ -360,14 +360,23 @@ impl NetlinkNetworkManager {
         });
 
         Ok(Self {
-            callout: cs,
-            result: Rc::new(rr),
+            callout: Arc::new(Mutex::new(cs)),
+            result: Arc::new(Mutex::new(rr)),
         })
     }
 
     fn make_call(&mut self, operation: NetlinkOperation) -> NetlinkOperationResult {
-        self.callout.send(operation).unwrap();
-        match self.result.recv_timeout(std::time::Duration::new(1, 0)) {
+        self.callout
+            .lock()
+            .expect("Locking failure")
+            .send(operation)
+            .unwrap();
+        match self
+            .result
+            .lock()
+            .expect("Locking failure")
+            .recv_timeout(std::time::Duration::new(1, 0))
+        {
             Ok(res) => res,
             Err(e) => NetlinkOperationResult::Error(e.to_string()),
         }

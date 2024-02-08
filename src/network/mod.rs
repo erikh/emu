@@ -28,7 +28,7 @@ pub enum NetworkManagerType {
 }
 
 impl NetworkManagerType {
-    pub fn into_manager(&self) -> Box<dyn NetworkManager> {
+    pub fn into_manager(&self) -> Box<dyn NetworkManager + Send> {
         match self {
             Self::Netlink => Box::<NetlinkNetworkManager>::default(),
         }
