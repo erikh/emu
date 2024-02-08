@@ -1,3 +1,6 @@
+pub mod db;
+
+use self::db::DB;
 use crate::network::{NetworkManager, NetworkManagerType};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -61,7 +64,7 @@ fn extract_message(message: &[u8]) -> Option<(usize, HelperMessage)> {
 }
 
 fn socket_filename(uid: u32) -> PathBuf {
-    PathBuf::from(format!("/tmp/emu-{}.sock", uid))
+    PathBuf::from("/tmp").join(&format!("emu-{}.sock", uid))
 }
 
 async fn handle_stream<T>(stream: Arc<Mutex<UnixStream>>, f: impl Fn(HelperMessage) -> T)
@@ -164,6 +167,7 @@ impl UnixClient {
 pub struct UnixServer {
     listener: UnixListener,
     manager: Arc<SyncMutex<Box<dyn NetworkManager + Send>>>,
+    _db: DB,
 }
 
 impl UnixServer {
@@ -173,6 +177,14 @@ impl UnixServer {
         let obj = Self {
             listener: UnixListener::bind(filename.clone())?,
             manager: Arc::new(SyncMutex::new(network.into_manager())),
+            _db: DB::new(format!(
+                "sqlite://{}",
+                dirs::runtime_dir()
+                    .unwrap_or("/tmp".into())
+                    .join("emu-helper.db")
+                    .display()
+            ))
+            .await?,
         };
 
         std::fs::set_permissions(filename.clone(), Permissions::from_mode(0o0660))?;
