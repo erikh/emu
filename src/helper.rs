@@ -1,4 +1,4 @@
-use crate::network::NetworkManagerType;
+use crate::network::{NetworkManager, NetworkManagerType};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,6 +7,9 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
+
+use std::sync::Mutex as SyncMutex;
+
 use tokio::{
     io::AsyncWriteExt,
     net::{UnixListener, UnixStream},
@@ -160,14 +163,16 @@ impl UnixClient {
 
 pub struct UnixServer {
     listener: UnixListener,
+    manager: Arc<SyncMutex<Box<dyn NetworkManager + Send>>>,
 }
 
 impl UnixServer {
-    pub async fn new(uid: u32, gid: u32, _network: NetworkManagerType) -> Result<Self> {
+    pub async fn new(uid: u32, gid: u32, network: NetworkManagerType) -> Result<Self> {
         let filename = socket_filename(uid);
         let _ = std::fs::remove_file(filename.clone());
         let obj = Self {
             listener: UnixListener::bind(filename.clone())?,
+            manager: Arc::new(SyncMutex::new(network.into_manager())),
         };
 
         std::fs::set_permissions(filename.clone(), Permissions::from_mode(0o0660))?;
@@ -175,7 +180,10 @@ impl UnixServer {
         Ok(obj)
     }
 
-    async fn process_message(message: HelperMessage) -> Result<Option<HelperMessage>> {
+    async fn process_message(
+        _manager: Arc<SyncMutex<Box<dyn NetworkManager + Send>>>,
+        message: HelperMessage,
+    ) -> Result<Option<HelperMessage>> {
         match message {
             HelperMessage::Request(req) => match req {
                 HelperRequest::Ping => Ok(Some(HelperMessage::Response(HelperResponse::Pong))),
@@ -186,8 +194,12 @@ impl UnixServer {
 
     pub async fn listen(&mut self) {
         while let Ok((stream, _)) = self.listener.accept().await {
+            let manager = self.manager.clone();
             tokio::spawn(async move {
-                handle_stream(Arc::new(Mutex::new(stream)), Self::process_message).await
+                handle_stream(Arc::new(Mutex::new(stream)), |msg| {
+                    Self::process_message(manager.clone(), msg)
+                })
+                .await
             });
         }
     }
