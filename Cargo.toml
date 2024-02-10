@@ -29,7 +29,10 @@ byte-unit = "^5"
 toml = "^0.8"
 kdam = "^0.5"
 nix = { version = "^0.27", features = [ "user" ] }
-rand = "*"
+rand = "^0.8"
+sqlx = { version = "^0.6", features = [ "runtime-tokio-rustls", "sqlite", "macros", "uuid", "time", "bigdecimal", "tls" ] }
+log = "^0.4"
+async-trait = "^0.1"
 
 [dev-dependencies]
 tempfile = "^3"
