@@ -179,6 +179,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_io() -> Result<()> {
         let tmp = NamedTempFile::new()?;
         let path = tmp.path().to_path_buf();

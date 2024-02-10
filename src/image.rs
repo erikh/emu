@@ -128,6 +128,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_image() -> Result<()> {
         let dir = tempdir()?;
         let path = dir.path().to_path_buf();

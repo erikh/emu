@@ -146,6 +146,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_into() -> Result<()> {
         let vm1: VM = "vm1".to_string().into();
         assert_eq!(vm1.name(), "vm1".to_string());
@@ -153,6 +154,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_serde() -> Result<()> {
         let vm1: VM = "vm1".to_string().into();
         assert_eq!(serde_json::to_string(&vm1)?, "\"vm1\"");
@@ -162,6 +164,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_vm_operations() -> Result<()> {
         let dir = tempdir()?;
         let base_path = dir.path().to_path_buf();

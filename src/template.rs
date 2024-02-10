@@ -60,6 +60,7 @@ mod tests {
     use anyhow::Result;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_template() -> Result<()> {
         let out = Systemd::template(&Systemd, &"vm1".to_string().into())?;
         assert!(out.contains("vm1"));

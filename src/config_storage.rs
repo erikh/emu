@@ -176,6 +176,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_xdg_storage() -> Result<()> {
         let base = tempdir()?;
         let base_path = base.path().to_path_buf();

@@ -18,6 +18,7 @@ mod tests {
     use anyhow::Result;
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_pid_running() -> Result<()> {
         assert!(pid_running(1));
         assert!(!pid_running(8675309));
@@ -25,6 +26,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn test_path_exists() -> Result<()> {
         assert!(path_exists(PathBuf::from("/")));
         assert!(!path_exists(PathBuf::from("/nonexistent")));
