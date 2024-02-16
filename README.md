@@ -30,6 +30,8 @@ It contains commands to:
 
 Linux with systemd and qemu. It places things according to the XDG standards, so that means `$HOME/.local` will have the VMs, etc.
 
+Most architectures should be supported; emu is used by the author on both x86 and Apple M1 (via Asahi Linux) architectures.
+
 To build the software, you will need a working rust environment. I strongly recommend [rustup](https://rustup.rs).
 
 ## Stability

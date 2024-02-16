@@ -4,7 +4,7 @@ use std::{collections::HashMap, io::Write, path::PathBuf};
 
 use anyhow::{anyhow, Result};
 
-const DEFAULT_CPU_TYPE: &str = "host";
+const DEFAULT_CPU_TYPE: &str = "max";
 const DEFAULT_CPUS: u32 = 8;
 const DEFAULT_MEMORY: u32 = 16384;
 const DEFAULT_VGA: &str = "virtio";

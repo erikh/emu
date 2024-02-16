@@ -117,7 +117,7 @@ impl QEmuLauncher {
             "-mon",
             "chardev=char0,mode=control,pretty=on",
             "-machine",
-            "accel=kvm",
+            "accel=kvm,accel=tcg",
             "-vga",
             config.machine.vga,
             "-m",
