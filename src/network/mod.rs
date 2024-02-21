@@ -16,9 +16,9 @@ pub use self::{
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(sqlx::FromRow, Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Network {
-    name: String,
+    pub(crate) name: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]

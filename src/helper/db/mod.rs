@@ -1,8 +1,10 @@
+pub mod network;
+
 use anyhow::{anyhow, Result};
 use log::LevelFilter;
 use sqlx::{
     sqlite::{Sqlite, SqliteConnectOptions, SqlitePool, SqlitePoolOptions, SqliteRow},
-    ConnectOptions, Encode, FromRow, Type, Value,
+    ConnectOptions, Encode, FromRow, Type,
 };
 use std::collections::HashMap;
 use std::{str::FromStr, time::Duration};
@@ -13,7 +15,7 @@ pub struct DB {
 
 impl DB {
     pub async fn new(url: String) -> Result<Self> {
-        let mut options = SqliteConnectOptions::from_str(&url)?;
+        let mut options = SqliteConnectOptions::from_str(&url)?.create_if_missing(true);
         options.log_statements(LevelFilter::Debug);
         options.log_slow_statements(LevelFilter::Warn, Duration::new(3, 0));
         let handle = SqlitePoolOptions::new()
@@ -31,18 +33,16 @@ impl DB {
 
 #[async_trait::async_trait]
 pub trait DBRecord: Sized + for<'a> FromRow<'a, SqliteRow> + Unpin {
-    fn table_name() -> String;
+    fn table_name() -> &'static str;
+    fn set_primary_key(&mut self, id: i64);
     fn primary_key(&self) -> i64;
-    fn columns(&self) -> Vec<String>;
-    fn columns_typed(&self) -> HashMap<String, String>;
-    fn constraints(&self) -> String;
-    fn value(
-        &self,
-        column: String,
-    ) -> Result<Option<impl Value<Database = Sqlite> + Encode<'_, Sqlite> + Type<Sqlite> + Send>>;
+    fn columns(&self) -> Vec<&str>;
+    fn columns_typed(&self) -> HashMap<&str, &str>;
+    fn constraints(&self) -> &str;
+    fn value(&self, column: &str) -> Result<impl Type<Sqlite> + Encode<'_, Sqlite> + Send>;
 
     async fn create_table(&self, db: &mut DB) -> Result<()> {
-        let mut column_expr = String::from(r#""id" integer not null primary key auto_increment"#);
+        let mut column_expr = String::from(r#""id" integer not null primary key autoincrement"#);
         for (name, def) in self.columns_typed() {
             column_expr += &format!(",\n\"{}\" {}", name, def);
         }
@@ -61,16 +61,18 @@ pub trait DBRecord: Sized + for<'a> FromRow<'a, SqliteRow> + Unpin {
         Ok(())
     }
 
-    async fn create(&self, db: &mut DB) -> Result<i64> {
-        let mut columns = String::from("\"id\"");
+    async fn create(&mut self, db: &mut DB) -> Result<i64> {
+        let mut columns = String::new();
         let columnlist = self.columns();
 
         for column in &columnlist {
-            columns += &format!(", \"{}\"", column);
+            columns += &format!("\"{}\",", column);
         }
 
-        let mut binds = String::from("?,").repeat(self.columns().len() + 1); // extra for id
-        binds.truncate(binds.len() - 2); // remove trailing comma
+        columns = columns[0..columns.len() - 1].to_string();
+
+        let mut binds = String::from("?,").repeat(self.columns().len());
+        binds = binds[0..binds.len() - 1].to_string();
 
         let stmt = format!(
             "insert into \"{}\" ({}) values ({})",
@@ -85,7 +87,8 @@ pub trait DBRecord: Sized + for<'a> FromRow<'a, SqliteRow> + Unpin {
         }
 
         let res = query.execute(&db.handle()).await?;
-        Ok(res.last_insert_rowid())
+        self.set_primary_key(res.last_insert_rowid());
+        Ok(self.primary_key())
     }
 
     async fn delete(&self, db: &mut DB) -> Result<()> {
@@ -164,24 +167,18 @@ pub trait DBRecord: Sized + for<'a> FromRow<'a, SqliteRow> + Unpin {
             "select * from \"{}\" where id = ? limit {}{}",
             Self::table_name(),
             limit,
-            if let Some(offset) = offset {
-                format!("offset {}", offset)
-            } else {
-                Default::default()
-            }
+            offset.map_or_else(|| Default::default(), |x| format!("offset {}", x))
         ))
         .bind(key)
         .fetch_all(&db.handle())
         .await?)
     }
 
-    async fn load_all(db: &mut DB, key: i64) -> Result<Vec<Self>> {
-        Ok(sqlx::query_as(&format!(
-            "select * from \"{}\" where id = ?",
-            Self::table_name()
-        ))
-        .bind(key)
-        .fetch_all(&db.handle())
-        .await?)
+    async fn load_all(db: &mut DB) -> Result<Vec<Self>> {
+        Ok(
+            sqlx::query_as(&format!("select * from \"{}\"", Self::table_name()))
+                .fetch_all(&db.handle())
+                .await?,
+        )
     }
 }
