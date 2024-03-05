@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use super::*;
 use crate::network::*;
 use anyhow::anyhow;
