@@ -65,14 +65,22 @@ mod tests {
     use tempfile::NamedTempFile;
 
     #[tokio::test]
-    async fn test_db_networks() -> Result<()> {
+    async fn test_db_statics() -> Result<()> {
+        let network = DBNetwork::new("foo".to_string());
+        assert_eq!(DBNetwork::table_name(), "networks");
+        assert_eq!(network.columns(), vec!["name"]);
+        assert_eq!(network.columns_typed()["name"], "varchar not null");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_db_io() -> Result<()> {
         let tf = NamedTempFile::new()?;
         let path = tf.into_temp_path();
 
         let mut db = DB::new(format!("sqlite://{}", path.to_str().unwrap())).await?;
         let mut network = DBNetwork::new("foo".to_string());
 
-        assert_eq!(DBNetwork::table_name(), "networks");
         network.create_table(&mut db).await?;
         network.create(&mut db).await?;
 
