@@ -65,7 +65,7 @@ fn extract_message(message: &[u8]) -> Option<(usize, HelperMessage)> {
 }
 
 fn socket_filename(uid: u32) -> PathBuf {
-    PathBuf::from("/tmp").join(&format!("emu-{}.sock", uid))
+    PathBuf::from("/tmp").join(format!("emu-{}.sock", uid))
 }
 
 async fn handle_stream<T>(stream: Arc<Mutex<UnixStream>>, f: impl Fn(HelperMessage) -> T)
@@ -79,25 +79,22 @@ where
         let lock = stream.lock().await;
         let res = lock.try_read(&mut buf);
         drop(lock);
-        match res {
-            Ok(size) => {
-                if size > 0 {
-                    message.append(&mut buf[..size].to_vec());
-                    while let Some((pos, msg)) = extract_message(&message) {
-                        message = message.iter().skip(pos).copied().collect::<Vec<u8>>();
-                        match f(msg).await {
-                            Ok(Some(response)) => {
-                                if send_message(stream.clone(), response).await.is_err() {
-                                    return;
-                                }
+        if let Ok(size) = res {
+            if size > 0 {
+                message.append(&mut buf[..size].to_vec());
+                while let Some((pos, msg)) = extract_message(&message) {
+                    message = message.iter().skip(pos).copied().collect::<Vec<u8>>();
+                    match f(msg).await {
+                        Ok(Some(response)) => {
+                            if send_message(stream.clone(), response).await.is_err() {
+                                return;
                             }
-                            Ok(None) => {}
-                            Err(_) => return,
                         }
+                        Ok(None) => {}
+                        Err(_) => return,
                     }
                 }
             }
-            Err(_) => {}
         }
 
         tokio::time::sleep(std::time::Duration::new(0, 500)).await;
@@ -189,7 +186,7 @@ impl UnixServer {
         };
 
         std::fs::set_permissions(filename.clone(), Permissions::from_mode(0o0660))?;
-        chown(filename, Some(uid.into()), Some(gid.into()))?;
+        chown(filename, Some(uid), Some(gid))?;
         Ok(obj)
     }
 

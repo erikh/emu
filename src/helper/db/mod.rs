@@ -167,7 +167,7 @@ pub trait DBRecord: Sized + for<'a> FromRow<'a, SqliteRow> + Unpin {
             "select * from \"{}\" where id = ? limit {}{}",
             Self::table_name(),
             limit,
-            offset.map_or_else(|| Default::default(), |x| format!("offset {}", x))
+            offset.map_or_else(Default::default, |x| format!("offset {}", x))
         ))
         .bind(key)
         .fetch_all(&db.handle())

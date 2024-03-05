@@ -73,7 +73,7 @@ impl NetlinkAsyncNetworkManager {
         }
     }
 
-    async fn from_interface(&self, interface: Interface) -> Result<NetlinkInterface> {
+    async fn interface(&self, interface: Interface) -> Result<NetlinkInterface> {
         self.interfaces.clone().lookup(interface.name, self).await
     }
 
@@ -180,10 +180,9 @@ impl NetlinkAsyncNetworkManager {
     }
 
     async fn create_interface(&self) -> Result<Interface> {
-        let id = vec!['a'..'z', 'A'..'Z', '0'..'9']
+        let id = ['a'..='z', 'A'..='Z', '0'..='9']
             .iter()
-            .map(|x| x.clone().map(|y| y.to_string()).collect::<Vec<String>>())
-            .flatten()
+            .flat_map(|x| x.clone().map(|y| y.to_string()).collect::<Vec<String>>())
             .choose_multiple(&mut rand::thread_rng(), rand::random::<usize>() % 5 + 5)
             .join("");
 
@@ -207,7 +206,7 @@ impl NetlinkAsyncNetworkManager {
         let resp = self
             .handle
             .link()
-            .del(self.from_interface(interface).await?.index)
+            .del(self.interface(interface).await?.index)
             .execute()
             .await;
 
@@ -226,7 +225,7 @@ impl NetlinkAsyncNetworkManager {
         let resp = self
             .handle
             .link()
-            .set(self.from_interface(interface).await?.index)
+            .set(self.interface(interface).await?.index)
             .controller(index)
             .execute()
             .await;
@@ -241,7 +240,7 @@ impl NetlinkAsyncNetworkManager {
         let resp = self
             .handle
             .link()
-            .set(self.from_interface(interface).await?.index)
+            .set(self.interface(interface).await?.index)
             .controller(0)
             .execute()
             .await;
@@ -257,7 +256,7 @@ impl NetlinkAsyncNetworkManager {
             .handle
             .address()
             .add(
-                self.from_interface(interface).await?.index,
+                self.interface(interface).await?.index,
                 address.ip,
                 address.mask,
             )
@@ -410,7 +409,7 @@ impl NetlinkNetworkManager {
                 NetlinkOperation::CreateInterface => rs
                     .send(manager.create_interface().await.map_or_else(
                         |e| NetlinkOperationResult::Error(e.to_string()),
-                        |i| NetlinkOperationResult::CreateInterface(i),
+                        NetlinkOperationResult::CreateInterface,
                     ))
                     .unwrap(),
                 NetlinkOperation::DeleteInterface(i) => rs
