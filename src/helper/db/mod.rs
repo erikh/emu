@@ -69,10 +69,10 @@ pub trait DBRecord: Sized + for<'a> FromRow<'a, SqliteRow> + Unpin {
             columns += &format!("\"{}\",", column);
         }
 
-        columns = columns[0..columns.len() - 1].to_string();
+        columns = columns[..columns.len() - 1].to_string();
 
         let mut binds = String::from("?,").repeat(self.columns().len());
-        binds = binds[0..binds.len() - 1].to_string();
+        binds = binds[..binds.len() - 1].to_string();
 
         let stmt = format!(
             "insert into \"{}\" ({}) values ({})",
