@@ -1,15 +1,22 @@
 use serde::{de::Visitor, Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 use std::net::{IpAddr, Ipv4Addr};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialOrd, Ord)]
 pub struct Address {
     pub ip: IpAddr,
     pub mask: u8,
 }
 
-impl std::hash::Hash for Address {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.ip.hash(state)
+impl PartialEq for Address {
+    fn eq(&self, other: &Self) -> bool {
+        self.ip == other.ip
+    }
+}
+
+impl Hash for Address {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.ip.hash(state);
         // NOTE: we don't want to consider the mask here; we don't want collisions on ips over a
         // mask difference.
     }
@@ -114,6 +121,57 @@ mod tests {
 
     #[test]
     fn test_hash() -> Result<()> {
+        use std::collections::{hash_map::DefaultHasher, HashMap};
+
+        let mut addresses = vec![
+            Address {
+                ip: IpAddr::from_str("192.168.1.1")?,
+                mask: 16,
+            },
+            Address {
+                ip: IpAddr::from_str("192.168.1.1")?,
+                mask: 32,
+            },
+            Address {
+                ip: IpAddr::from_str("192.168.1.2")?,
+                mask: 16,
+            },
+            Address {
+                ip: IpAddr::from_str("192.168.1.3")?,
+                mask: 16,
+            },
+        ];
+
+        let mut hasher = DefaultHasher::new();
+
+        assert_eq!(
+            addresses[0].hash(&mut hasher),
+            addresses[1].hash(&mut hasher)
+        );
+
+        let orig = addresses.clone();
+        addresses.sort();
+        assert_eq!(addresses, orig);
+
+        let mut map: HashMap<Address, bool> = HashMap::default();
+        for address in addresses {
+            map.insert(address, true);
+        }
+
+        assert_eq!(map.len(), 3);
+
+        for address in vec!["192.168.1.1", "192.168.1.2", "192.168.1.3"] {
+            assert!(
+                map.get(&Address {
+                    ip: IpAddr::from_str(address)?,
+                    mask: 32,
+                })
+                .is_some(),
+                "{}",
+                address
+            )
+        }
+
         Ok(())
     }
 }
