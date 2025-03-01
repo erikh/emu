@@ -15,12 +15,14 @@ pub struct DB {
 
 impl DB {
     pub async fn new(url: String) -> Result<Self> {
-        let mut options = SqliteConnectOptions::from_str(&url)?.create_if_missing(true);
-        options.log_statements(LevelFilter::Debug);
-        options.log_slow_statements(LevelFilter::Warn, Duration::new(3, 0));
+        let options = SqliteConnectOptions::from_str(&url)?.create_if_missing(true);
+        options.clone().log_statements(LevelFilter::Debug);
+        options
+            .clone()
+            .log_slow_statements(LevelFilter::Warn, Duration::new(3, 0));
         let handle = SqlitePoolOptions::new()
             .max_connections(100)
-            .connect_with(options)
+            .connect_with(options.clone())
             .await?;
 
         Ok(Self { handle })

@@ -183,7 +183,10 @@ impl NetlinkAsyncNetworkManager {
         let id = ['a'..='z', 'A'..='Z', '0'..='9']
             .iter()
             .flat_map(|x| x.clone().map(|y| y.to_string()).collect::<Vec<String>>())
-            .choose_multiple(&mut rand::thread_rng(), rand::random::<usize>() % 5 + 5)
+            .choose_multiple(
+                &mut rand::rng(),
+                (rand::random::<u64>() % 5 + 5).try_into()?,
+            )
             .join("");
 
         let if_name = format!("emu-{}", id);
