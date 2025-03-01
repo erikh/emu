@@ -1,43 +1,46 @@
--   0.4.2:
-    -   Fix a large bug with qemu launches; I had misunderstood what `-snapshot` was for, VMs launched with this flag will not retain their state.
-    -   Instead of letting qemu spit out a nasty error, we now detect port forwards already in use and block the run.
--   0.4.1:
-    -   Named snapshots are now under the `snapshot` sub-commmand structure and provide the following features for now:
-        -   `emu snapshot save <vm> <name>` saves a new snapshot to the VM. The snapshot's name must not already be saved.
-        -   `emu snapshot load <vm> <name>` loads snapshot into the VM's current running state.
-        -   `emu snapshot delete <vm> <name>` deletes snapshot state.
-        -   There is no listing command yet; you must remember your names for now. One thing at a time! :)
-    -   `emu reset` performs a hard reset of a VM.
-    -   `emu restart` shuts the VM down and waits, and then spawns it again. Will re-create windows, and should not be used with supervisors/systemd.
--   0.4.0:
-    -   Snapshots! The following commands now manage a single, easy-to-use snapshot for quickly managing state.
-        -   `emu save <vm>` will save your VM's current state
-        -   `emu load <vm>` will load the saved state (as many times as you want)
-        -   `emu clear-state <vm>` will clear the saved state.
-        -   Notes:
-            -   Lots of operations in a rush seem to crash qemu easily. Still looking into this.
-            -   You must clear a saved state before creating a new one. Saving twice results in an error. May change this.
-    -   `emu clone` now has a cool progress meter for copying large files
-        -   Also, you can now pass `-c` to copy the configuration as well as the image data. Default is off.
-    -   Underpinnings now include a semi-comprehensive QMP client for qemu.
--   0.3.0:
-    -   `emu shutdown` now waits for qemu to quit before quitting itself.
-        -   Provide the `-n` flag to return to the shell instead of waiting.
-    -   Allow `emu ssh` to supply arguments to the underlying `ssh` command.
-    -   Code rewrite: most code has been replaced and re-organized for future enhancements including polymorphism amongst operating systems and hypervisors.
--   0.2.0:
-    -   `emu list-disks` to list disks for a VM.
-    -   `emu import` always creates a new disk when importing.
-    -   `emu clone` copies all images from one VM to the new destination.
-    -   `emu delete` now takes an optional parameter to delete individual VM images.
-    -   `emu config copy` allows you to copy pre-configured settings from one VM to another.
-    -   `emu create -a` can now be used to add disks to an existing VM.
-    -   Disks are now created stamped with the epoch seconds they were created at.
-    -   `emu list -r` lists running VMs only.
-    -   Rename command; rename vms you manage.
-    -   Better error messages in some situations.
--   0.1.1:
-    -   Tracking of run state; specialized for systemd or ad-hoc qemu runs
-        -   Reflected in lists and also with a new command `is-active`
--   0.1.0:
-    -   First release (after 4 years of sitting on the shelf)
+- 0.4.3:
+    - Long time since a release
+    - Options in `config show` have an underscore in the names and the command-line `set` equivalents had dashes. This has been normalized.
+- 0.4.2:
+    - Fix a large bug with qemu launches; I had misunderstood what `-snapshot` was for, VMs launched with this flag will not retain their state.
+    - Instead of letting qemu spit out a nasty error, we now detect port forwards already in use and block the run.
+- 0.4.1:
+    - Named snapshots are now under the `snapshot` sub-commmand structure and provide the following features for now:
+        - `emu snapshot save <vm> <name>` saves a new snapshot to the VM. The snapshot's name must not already be saved.
+        - `emu snapshot load <vm> <name>` loads snapshot into the VM's current running state.
+        - `emu snapshot delete <vm> <name>` deletes snapshot state.
+        - There is no listing command yet; you must remember your names for now. One thing at a time! :)
+    - `emu reset` performs a hard reset of a VM.
+    - `emu restart` shuts the VM down and waits, and then spawns it again. Will re-create windows, and should not be used with supervisors/systemd.
+- 0.4.0:
+    - Snapshots! The following commands now manage a single, easy-to-use snapshot for quickly managing state.
+        - `emu save <vm>` will save your VM's current state
+        - `emu load <vm>` will load the saved state (as many times as you want)
+        - `emu clear-state <vm>` will clear the saved state.
+        - Notes:
+            - Lots of operations in a rush seem to crash qemu easily. Still looking into this.
+            - You must clear a saved state before creating a new one. Saving twice results in an error. May change this.
+    - `emu clone` now has a cool progress meter for copying large files
+        - Also, you can now pass `-c` to copy the configuration as well as the image data. Default is off.
+    - Underpinnings now include a semi-comprehensive QMP client for qemu.
+- 0.3.0:
+    - `emu shutdown` now waits for qemu to quit before quitting itself.
+        - Provide the `-n` flag to return to the shell instead of waiting.
+    - Allow `emu ssh` to supply arguments to the underlying `ssh` command.
+    - Code rewrite: most code has been replaced and re-organized for future enhancements including polymorphism amongst operating systems and hypervisors.
+- 0.2.0:
+    - `emu list-disks` to list disks for a VM.
+    - `emu import` always creates a new disk when importing.
+    - `emu clone` copies all images from one VM to the new destination.
+    - `emu delete` now takes an optional parameter to delete individual VM images.
+    - `emu config copy` allows you to copy pre-configured settings from one VM to another.
+    - `emu create -a` can now be used to add disks to an existing VM.
+    - Disks are now created stamped with the epoch seconds they were created at.
+    - `emu list -r` lists running VMs only.
+    - Rename command; rename vms you manage.
+    - Better error messages in some situations.
+- 0.1.1:
+    - Tracking of run state; specialized for systemd or ad-hoc qemu runs
+        - Reflected in lists and also with a new command `is-active`
+- 0.1.0:
+    - First release (after 4 years of sitting on the shelf)
