@@ -118,11 +118,23 @@ impl Configuration {
                 self.machine.image_interface = value.to_string();
                 Ok(())
             }
+            "image_interface" => {
+                self.machine.image_interface = value.to_string();
+                Ok(())
+            }
             "cpu-type" => {
                 self.machine.cpu_type = value.to_string();
                 Ok(())
             }
+            "cpu_type" => {
+                self.machine.cpu_type = value.to_string();
+                Ok(())
+            }
             "ssh-port" => {
+                self.machine.ssh_port = value.parse::<u16>()?;
+                Ok(())
+            }
+            "ssh_port" => {
                 self.machine.ssh_port = value.parse::<u16>()?;
                 Ok(())
             }
